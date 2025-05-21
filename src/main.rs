@@ -1,6 +1,10 @@
+use anyhow::Result;
 use clap::{Parser, Subcommand};
+use config::Config;
 use env_logger::Builder;
 use log::LevelFilter;
+
+mod config;
 
 #[derive(Subcommand)]
 enum Commands {
@@ -21,11 +25,14 @@ fn init_log() {
     .init();
 }
 
-fn main() {
+fn main() -> Result<()> {
   init_log();
   let args = Args::parse();
 
+  let config = Config::new(".envcmd/config.json");
   match args.command {
-    Commands::Init => log::info!("Hello, world!"),
+    Commands::Init => config.create()?,
   }
+
+  Ok(())
 }
