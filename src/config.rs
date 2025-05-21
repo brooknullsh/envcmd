@@ -3,7 +3,7 @@ use std::{
   path::PathBuf,
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result};
 
 pub struct Config {
   path: PathBuf,
@@ -18,24 +18,23 @@ impl Config {
   }
 
   pub fn create(&self) -> Result<()> {
-    let Some(home_path) = dirs::home_dir() else {
-      return Err(anyhow!("Failed to locate the home directory"));
-    };
+    let config_path = dirs::home_dir()
+      .with_context(|| "failed to locate the home directory")?
+      .join(&self.path);
 
-    let config_path = home_path.join(&self.path);
     if config_path.exists() {
-      log::debug!("Config already exists");
+      log::debug!("config already exists");
       return Ok(());
     }
 
-    let Some(parent_dir) = config_path.parent() else {
-      return Err(anyhow!("Failed to extract the parent directory"));
-    };
+    let parent_dir = config_path
+      .parent()
+      .with_context(|| "failed to extract the parent directory")?;
 
     fs::create_dir_all(parent_dir)?;
     File::create(config_path)?;
 
-    log::debug!("Config created");
+    log::debug!("config created");
     Ok(())
   }
 }
@@ -49,10 +48,9 @@ mod tests {
   #[test]
   fn test_create_config_from_scratch() -> Result<()> {
     let path = tempfile::tempdir()?.path().join(PATH);
-    let config = Config::new(&path);
 
     assert!(!path.exists());
-    config.create()?;
+    Config::new(&path).create()?;
     assert!(path.exists());
 
     Ok(())
