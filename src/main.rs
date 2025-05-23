@@ -7,14 +7,16 @@ use log::LevelFilter;
 mod config;
 
 #[derive(Subcommand)]
-enum Commands {
+enum Command {
   Init,
+  Delete,
+  View,
 }
 
 #[derive(Parser)]
 struct Args {
   #[command(subcommand)]
-  command: Commands,
+  command: Command,
 }
 
 fn init_log() {
@@ -29,9 +31,11 @@ fn main() -> Result<()> {
   init_log();
   let args = Args::parse();
 
-  let config = Config::new(".envcmd/config.json");
+  let mut config = Config::default();
   match args.command {
-    Commands::Init => config.create()?,
+    Command::Init => config.create()?,
+    Command::Delete => config.delete()?,
+    Command::View => config.view()?,
   }
 
   Ok(())

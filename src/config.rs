@@ -1,69 +1,99 @@
+use serde::{Deserialize, Serialize};
+use serde_json::{from_str, to_string_pretty};
 use std::{
-  fs::{self, File},
+  fmt::{self, Display, Formatter},
+  fs::{File, create_dir_all, read_to_string, remove_dir, remove_file},
+  io::Write,
   path::PathBuf,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{Result, bail, ensure};
 
+#[derive(Serialize, Deserialize)]
+struct Content {
+  name: String,
+  condition: Vec<String>,
+  commands: Vec<String>,
+}
+
+impl Default for Content {
+  fn default() -> Self {
+    Self {
+      name: "run".into(),
+      condition: vec!["directory".into(), "example".into()],
+      commands: vec!["echo 'Hello, world!'".into()],
+    }
+  }
+}
+
+impl Display for Content {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    write!(
+      f,
+      "\n[{}]\nif {}\n---\n{}\n",
+      self.name,
+      self.condition.join(" is "),
+      self.commands.join("\n")
+    )
+  }
+}
+
+#[derive(Default)]
 pub struct Config {
-  path: PathBuf,
+  whole_path: PathBuf,
+  dir_path: PathBuf,
 }
 
 impl Config {
-  pub fn new<T>(path: T) -> Self
-  where
-    T: Into<PathBuf>,
-  {
-    Self { path: path.into() }
-  }
+  #[inline]
+  fn find_configuration_path(&mut self) -> Result<()> {
+    let Some(home_path) = dirs::home_dir() else {
+      bail!("failed to find the home directory");
+    };
 
-  pub fn create(&self) -> Result<()> {
-    let config_path = dirs::home_dir()
-      .with_context(|| "failed to locate the home directory")?
-      .join(&self.path);
-
-    if config_path.exists() {
-      log::debug!("config already exists");
-      return Ok(());
-    }
-
-    let parent_dir = config_path
-      .parent()
-      .with_context(|| "failed to extract the parent directory")?;
-
-    fs::create_dir_all(parent_dir)?;
-    File::create(config_path)?;
-
-    log::debug!("config created");
-    Ok(())
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  const PATH: &str = ".test/test.json";
-
-  #[test]
-  fn test_create_config_from_scratch() -> Result<()> {
-    let path = tempfile::tempdir()?.path().join(PATH);
-
-    assert!(!path.exists());
-    Config::new(&path).create()?;
-    assert!(path.exists());
-
+    self.whole_path = home_path.join(".envcmd/config.json");
+    self.dir_path = home_path.join(".envcmd");
     Ok(())
   }
 
-  #[test]
-  fn test_create_config_already_exists() -> Result<()> {
-    let path = tempfile::tempdir()?.path().join(PATH);
-    let config = Config::new(&path);
+  pub fn create(&mut self) -> Result<()> {
+    self.find_configuration_path()?;
+    ensure!(!self.whole_path.exists(), "configuration already exists");
 
-    config.create()?;
-    assert!(config.create().is_ok());
+    create_dir_all(&self.dir_path)?;
+    let mut file = File::create(&self.whole_path)?;
 
+    let default_content = Content::default();
+    let default_json = to_string_pretty(&default_content)?;
+    file.write_all(default_json.as_bytes())?;
+
+    log::info!(
+      "config created at {}\n{}",
+      self.whole_path.display(),
+      default_content
+    );
+    Ok(())
+  }
+
+  pub fn delete(&mut self) -> Result<()> {
+    self.find_configuration_path()?;
+    ensure!(self.whole_path.exists(), "no configuration found");
+
+    remove_file(&self.whole_path)?;
+    remove_dir(&self.dir_path)?;
+
+    log::info!("config deleted from {}", self.whole_path.display());
+    Ok(())
+  }
+
+  pub fn view(&mut self) -> Result<()> {
+    self.find_configuration_path()?;
+    ensure!(self.whole_path.exists(), "no configuration found");
+
+    let content_str = read_to_string(&self.whole_path)?;
+    let content: Content = from_str(&content_str)?;
+
+    log::info!("{}", content);
     Ok(())
   }
 }
