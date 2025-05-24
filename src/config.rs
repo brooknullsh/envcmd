@@ -11,7 +11,6 @@ use anyhow::{Result, bail, ensure};
 
 #[derive(Serialize, Deserialize)]
 struct Content {
-  name: String,
   condition: Vec<String>,
   commands: Vec<String>,
 }
@@ -19,7 +18,6 @@ struct Content {
 impl Default for Content {
   fn default() -> Self {
     Self {
-      name: "run".into(),
       condition: vec!["directory".into(), "example".into()],
       commands: vec!["echo 'Hello, world!'".into()],
     }
@@ -30,34 +28,31 @@ impl Display for Content {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
     write!(
       f,
-      "\n[{}]\nif {}\n---\n{}\n",
-      self.name,
+      "\nif {}\n---\n{}\n",
       self.condition.join(" is "),
       self.commands.join("\n")
     )
   }
 }
 
-#[derive(Default)]
 pub struct Config {
   whole_path: PathBuf,
   dir_path: PathBuf,
 }
 
 impl Config {
-  #[inline]
-  fn find_configuration_path(&mut self) -> Result<()> {
+  pub fn new() -> Result<Self> {
     let Some(home_path) = dirs::home_dir() else {
-      bail!("failed to find the home directory");
+      bail!("failed to find your home directory");
     };
 
-    self.whole_path = home_path.join(".envcmd/config.json");
-    self.dir_path = home_path.join(".envcmd");
-    Ok(())
+    Ok(Self {
+      whole_path: home_path.join(".envcmd/config.json"),
+      dir_path: home_path.join(".envcmd"),
+    })
   }
 
   pub fn create(&mut self) -> Result<()> {
-    self.find_configuration_path()?;
     ensure!(!self.whole_path.exists(), "configuration already exists");
 
     create_dir_all(&self.dir_path)?;
@@ -68,7 +63,7 @@ impl Config {
     file.write_all(default_json.as_bytes())?;
 
     log::info!(
-      "config created at {}\n{}",
+      "config created at {}{}",
       self.whole_path.display(),
       default_content
     );
@@ -76,7 +71,6 @@ impl Config {
   }
 
   pub fn delete(&mut self) -> Result<()> {
-    self.find_configuration_path()?;
     ensure!(self.whole_path.exists(), "no configuration found");
 
     remove_file(&self.whole_path)?;
@@ -87,7 +81,6 @@ impl Config {
   }
 
   pub fn view(&mut self) -> Result<()> {
-    self.find_configuration_path()?;
     ensure!(self.whole_path.exists(), "no configuration found");
 
     let content_str = read_to_string(&self.whole_path)?;

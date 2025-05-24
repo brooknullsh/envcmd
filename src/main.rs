@@ -31,7 +31,7 @@ fn main() -> Result<()> {
   init_log();
   let args = Args::parse();
 
-  let mut config = Config::default();
+  let mut config = Config::new()?;
   match args.command {
     Command::Init => config.create()?,
     Command::Delete => config.delete()?,
