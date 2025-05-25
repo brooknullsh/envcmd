@@ -7,24 +7,24 @@ use std::{
 
 macro_rules! log {
   (INFO, $($message:tt)*) => {
-    println!("\x1b[1m\x1b[32m[INFO ]\x1b[0m {}", format!($($message)*));
+    println!("\x1b[1m\x1b[32m[INFO ]\x1b[0m {}", format!($($message)*))
   };
   (WARN, $($message:tt)*) => {
-    println!("\x1b[1m\x1b[33m[WARN ]\x1b[0m {}", format!($($message)*));
+    println!("\x1b[1m\x1b[33m[WARN ]\x1b[0m {}", format!($($message)*))
   };
   (ERROR, $($message:tt)*) => {
-    eprintln!("\x1b[1m\x1b[31m[ERROR]\x1b[0m {}", format!($($message)*));
+    eprintln!("\x1b[1m\x1b[31m[ERROR]\x1b[0m {}", format!($($message)*))
   };
   ($($message:tt)*) => {
-    println!("\x1b[1m\x1b[34m[DEBUG]\x1b[0m {}", format!($($message)*));
+    println!("\x1b[1m\x1b[34m[DEBUG]\x1b[0m {}", format!($($message)*))
   };
 }
 
 macro_rules! abort {
-  ($($message:tt)*) => {
+  ($($message:tt)*) => {{
     log!(ERROR, $($message)*);
     process::exit(1);
-  };
+  }};
 }
 
 macro_rules! ensure {
@@ -35,48 +35,39 @@ macro_rules! ensure {
   }
 }
 
-fn config_path() -> PathBuf {
-  let Some(config_path) = env::home_dir().map(|path| path.join(".envcmd/config.txt")) else {
+fn config_path() -> (PathBuf, PathBuf) {
+  let Some(path) = env::home_dir() else {
     abort!("Config: home directory not found");
   };
-  config_path
+  (path.join(".envcmd/config.txt"), path.join(".envcmd"))
 }
 
 fn create_config() {
-  let config_path = config_path();
-  let Some(parent_dir) = config_path.parent() else {
-    abort!("Config: parent directory not found");
+  let (path, dir_path) = config_path();
+  ensure!(!path.exists(), "Config: exists at {}", path.display());
+
+  log!("Config: creating at {}", path.display());
+  if let Err(err) = create_dir_all(dir_path).and_then(|_| File::create(&path)) {
+    abort!("Config: creation failed, {}", err);
   };
-
-  if let Err(err) = create_dir_all(parent_dir).and_then(|_| File::create(&config_path)) {
-    abort!(
-      "Config: failed to create config at {}, {}",
-      config_path.display(),
-      err
-    );
-  }
-
-  log!(INFO, "Config: created at {}", config_path.display());
+  log!(INFO, "Config: created at {}", path.display());
 }
 
 fn handle_arg(arg: String) {
   match arg.as_str() {
-    "init" if !config_path().exists() => create_config(),
-    _ => todo!(),
+    "init" | "-i" => create_config(),
+    _ => abort!("Arguments: unknown value '{}'", arg),
   }
-}
-
-fn run() {
-  todo!();
 }
 
 fn main() {
   let mut args = env::args();
   args.next(); // Ignore process name
-  ensure!(args.len() <= 1, "Arguments: expected 1, got {}", args.len());
 
+  ensure!(args.len() <= 1, "Arguments: expected 1, got {}", args.len());
   let Some(cmd) = args.next() else {
-    return run();
+    return log!(WARN, "Arguments: not found");
   };
+
   handle_arg(cmd);
 }
