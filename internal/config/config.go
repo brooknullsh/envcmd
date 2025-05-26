@@ -14,8 +14,9 @@ type content struct {
 	Commands  []string `json:"commands"`
 }
 
-func readContent(file *os.File) content {
-	var content content
+func readContent(file *os.File) []content {
+	var content []content
+
 	err := json.NewDecoder(file).Decode(&content)
 	if err != nil {
 		log.Log(log.Error, "decoding JSON: %v", err)
@@ -25,7 +26,7 @@ func readContent(file *os.File) content {
 	return content
 }
 
-func (c *content) WriteToFile(file *os.File) {
+func writeToFile(c []content, file *os.File) {
 	jsonContent, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		log.Log(log.Error, "encoding JSON: %v", err)
@@ -60,7 +61,6 @@ func (c *Config) FindPath() {
 
 func (c *Config) Create() {
 	if c.doesConfigExist() {
-		log.Log(log.Info, "exists at %s", c.filePath)
 		return
 	}
 
@@ -77,19 +77,24 @@ func (c *Config) Create() {
 		os.Exit(1)
 	}
 
-	defaultContent := content{
-		Condition: []string{"directory", "foo"},
-		Commands:  []string{"echo 'Hello, foo!'"},
+	defer file.Close()
+
+	defaultContent := []content{
+		{
+			Condition: []string{"directory", "foo"},
+			Commands:  []string{"echo 'Hello, foo!'"},
+		},
+		{
+			Condition: []string{"branch", "bar"},
+			Commands:  []string{"echo 'Hello, bar!'"},
+		},
 	}
 
-	defaultContent.WriteToFile(file)
-	defer file.Close()
-	log.Log(log.Info, "created %s", c.filePath)
+	writeToFile(defaultContent, file)
 }
 
 func (c *Config) Delete() {
 	if !c.doesConfigExist() {
-		log.Log(log.Info, "no configuration to delete")
 		return
 	}
 
@@ -98,13 +103,10 @@ func (c *Config) Delete() {
 		log.Log(log.Error, "removing file at %s: %v", c.filePath, err)
 		os.Exit(1)
 	}
-
-	log.Log(log.Info, "removed %s", c.filePath)
 }
 
 func (c *Config) List() {
 	if !c.doesConfigExist() {
-		log.Log(log.Info, "no configuration to list")
 		return
 	}
 
@@ -116,7 +118,8 @@ func (c *Config) List() {
 
 	defer file.Close()
 
-	log.Log(log.Debug, "reading %s", c.filePath)
 	content := readContent(file)
-	log.Log(log.Info, "%v - %v", content.Condition, content.Commands)
+	for index, item := range content {
+		log.Log(log.Info, "(%d) %v - %v", index, item.Condition, item.Commands)
+	}
 }
