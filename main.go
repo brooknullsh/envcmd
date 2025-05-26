@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/brooknullsh/envcmd/internal/config"
+	"github.com/brooknullsh/envcmd/internal/context"
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
@@ -22,7 +23,13 @@ func main() {
 		content := config.Read()
 
 		for _, item := range content {
-			item.Process(true)
+			ctx, expected := item.Condition[0], item.Condition[1]
+
+			if context.Match(ctx, expected) {
+				item.Process(true)
+			} else {
+				log.Log(log.Warn, "%s is \x1b[1mNOT\033[0m %s", ctx, expected)
+			}
 		}
 
 		return
