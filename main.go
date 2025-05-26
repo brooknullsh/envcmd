@@ -15,11 +15,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	var config config.Config
+	config.FindPath()
+
 	switch args[0] {
 	case "create":
 		config.Create()
 	case "delete":
 		config.Delete()
+	case "list":
+		config.List()
 	default:
 		log.Log(log.Error, "unknown command %s", args[0])
 		os.Exit(1)
