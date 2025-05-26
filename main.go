@@ -11,10 +11,17 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) != 1 {
-		log.Log(log.Error, "Expected 1 argument, got %d", len(args))
-		return
+		log.Log(log.Error, "expected 1 argument, got %d", len(args))
+		os.Exit(1)
 	}
 
-	log.Log(log.Info, "%s", args[0])
-	config.Run()
+	switch args[0] {
+	case "create":
+		config.Create()
+	case "delete":
+		config.Delete()
+	default:
+		log.Log(log.Error, "unknown command %s", args[0])
+		os.Exit(1)
+	}
 }
