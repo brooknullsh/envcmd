@@ -6,12 +6,29 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/brooknullsh/envcmd/internal/cmd"
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
 type content struct {
 	Condition []string `json:"condition"`
 	Commands  []string `json:"commands"`
+}
+
+func (c *content) Process(run bool) {
+	for _, command := range c.Commands {
+		log.Log(
+			log.Debug,
+			"if \x1b[1m%v\033[0m is \x1b[1m%v\033[0m then run \x1b[1m%v",
+			c.Condition[0],
+			c.Condition[1],
+			command,
+		)
+
+		if run {
+			cmd.RunCmd(command)
+		}
+	}
 }
 
 func readContent(file *os.File) []content {
@@ -105,9 +122,9 @@ func (c *Config) Delete() {
 	}
 }
 
-func (c *Config) List() {
+func (c *Config) Read() []content {
 	if !c.doesConfigExist() {
-		return
+		return nil
 	}
 
 	file, err := os.Open(c.filePath)
@@ -117,9 +134,5 @@ func (c *Config) List() {
 	}
 
 	defer file.Close()
-
-	content := readContent(file)
-	for index, item := range content {
-		log.Log(log.Info, "(%d) %v - %v", index, item.Condition, item.Commands)
-	}
+	return readContent(file)
 }
