@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/brooknullsh/envcmd/internal/cmd"
 	"github.com/brooknullsh/envcmd/internal/config"
 	"github.com/brooknullsh/envcmd/internal/context"
 	"github.com/brooknullsh/envcmd/internal/log"
@@ -19,34 +20,34 @@ func main() {
 	var config config.Config
 	config.FindPath()
 
-	if len(args) == 0 {
-		content := config.Read()
-
-		for _, item := range content {
-			ctx, expected := item.Condition[0], item.Condition[1]
-
-			if context.Match(ctx, expected) {
-				item.Process(true)
-			} else {
-				log.Log(log.Warn, "%s is \x1b[1mNOT\033[0m %s", ctx, expected)
+	if len(args) == 1 {
+		switch args[0] {
+		case "create":
+			config.Create()
+		case "delete":
+			config.Delete()
+		case "show":
+			for _, content := range config.Read() {
+				log.PrettyContent(content.Commands, content.Condition)
 			}
+		default:
+			log.Log(log.Error, "unknown command %s", args[0])
+			os.Exit(1)
 		}
 
 		return
 	}
 
-	switch args[0] {
-	case "create":
-		config.Create()
-	case "delete":
-		config.Delete()
-	case "show":
-		content := config.Read()
-		for _, item := range content {
-			item.Process(false)
+	for _, item := range config.Read() {
+		ctx, expected := item.Condition[0], item.Condition[1]
+
+		if !context.Match(ctx, expected) {
+			log.Log(log.Warn, "%s is \x1b[1mNOT\033[0m %s", ctx, expected)
+			continue
 		}
-	default:
-		log.Log(log.Error, "unknown command %s", args[0])
-		os.Exit(1)
+
+		for _, command := range item.Commands {
+			cmd.Run(command)
+		}
 	}
 }

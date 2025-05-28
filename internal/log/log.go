@@ -39,3 +39,16 @@ func Log(level string, format string, args ...any) {
 	content := fmt.Sprintf(format, args...)
 	fmt.Fprintf(os.Stdout, "\x1b[1m%s[%s]%s %s\n", colour, level, reset, content)
 }
+
+func PrettyContent(commands []string, conditionals []string) {
+	for index, command := range commands {
+		Log(
+			Info,
+			"(%d) if %s is %s then run %s",
+			index+1,
+			conditionals[0],
+			conditionals[1],
+			command,
+		)
+	}
+}

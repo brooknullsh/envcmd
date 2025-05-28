@@ -6,33 +6,16 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/brooknullsh/envcmd/internal/cmd"
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
-type content struct {
+type Content struct {
 	Condition []string `json:"condition"`
 	Commands  []string `json:"commands"`
 }
 
-func (c *content) Process(run bool) {
-	for _, command := range c.Commands {
-		log.Log(
-			log.Debug,
-			"if \x1b[1m%v\033[0m is \x1b[1m%v\033[0m then run \x1b[1m%v",
-			c.Condition[0],
-			c.Condition[1],
-			command,
-		)
-
-		if run {
-			cmd.RunCmd(command)
-		}
-	}
-}
-
-func readContent(file *os.File) []content {
-	var content []content
+func readContent(file *os.File) []Content {
+	var content []Content
 
 	err := json.NewDecoder(file).Decode(&content)
 	if err != nil {
@@ -43,7 +26,7 @@ func readContent(file *os.File) []content {
 	return content
 }
 
-func writeToFile(c []content, file *os.File) {
+func writeToFile(c []Content, file *os.File) {
 	jsonContent, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		log.Log(log.Error, "encoding JSON: %v", err)
@@ -61,7 +44,7 @@ type Config struct {
 	filePath string
 }
 
-func (c *Config) doesConfigExist() bool {
+func (c Config) doesConfigExist() bool {
 	_, err := os.Stat(c.filePath)
 	return err == nil
 }
@@ -76,8 +59,9 @@ func (c *Config) FindPath() {
 	c.filePath = filepath.Join(user.HomeDir, ".envcmd/config.json")
 }
 
-func (c *Config) Create() {
+func (c Config) Create() {
 	if c.doesConfigExist() {
+		log.Log(log.Error, "configuration already exists")
 		return
 	}
 
@@ -96,7 +80,7 @@ func (c *Config) Create() {
 
 	defer file.Close()
 
-	defaultContent := []content{
+	defaultContent := []Content{
 		{
 			Condition: []string{"directory", "foo"},
 			Commands:  []string{"echo 'Hello, foo!'"},
@@ -108,10 +92,12 @@ func (c *Config) Create() {
 	}
 
 	writeToFile(defaultContent, file)
+	log.Log(log.Info, "created at %s", c.filePath)
 }
 
-func (c *Config) Delete() {
+func (c Config) Delete() {
 	if !c.doesConfigExist() {
+		log.Log(log.Error, "configuration doesn't exist")
 		return
 	}
 
@@ -120,10 +106,13 @@ func (c *Config) Delete() {
 		log.Log(log.Error, "removing file at %s: %v", c.filePath, err)
 		os.Exit(1)
 	}
+
+	log.Log(log.Info, "deleted from %s", c.filePath)
 }
 
-func (c *Config) Read() []content {
+func (c Config) Read() []Content {
 	if !c.doesConfigExist() {
+		log.Log(log.Error, "configuration doesn't exist")
 		return nil
 	}
 
@@ -134,5 +123,7 @@ func (c *Config) Read() []content {
 	}
 
 	defer file.Close()
+
+	log.Log(log.Debug, "read from %s", c.filePath)
 	return readContent(file)
 }

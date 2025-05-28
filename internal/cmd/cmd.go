@@ -8,7 +8,17 @@ import (
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
-func RunCmd(command string) {
+func extractOutput(scanner *bufio.Scanner) {
+	for scanner.Scan() {
+		log.Log(log.Info, "%s", scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Log(log.Warn, "reading stdout: %v", err)
+	}
+}
+
+func Run(command string) {
 	cmd := exec.Command("bash", "-c", command)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -22,14 +32,7 @@ func RunCmd(command string) {
 	}
 
 	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		log.Log(log.Info, "%s", scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Log(log.Error, "reading stdout: %v", err)
-		os.Exit(1)
-	}
+	extractOutput(scanner)
 
 	err = cmd.Wait()
 	if err != nil {

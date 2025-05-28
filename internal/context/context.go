@@ -38,5 +38,6 @@ func Match(context string, actual string) bool {
 		return branchMatch(actual)
 	}
 
+	log.Log(log.Debug, "no %s match for %s", context, actual)
 	return false
 }
