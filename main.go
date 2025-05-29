@@ -13,8 +13,7 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) > 1 {
-		log.Log(log.Error, "expected 1 argument or none, got %d", len(args))
-		os.Exit(1)
+		log.Abort("expected 1 argument or none, got %d", len(args))
 	}
 
 	var config config.Config
@@ -31,8 +30,7 @@ func main() {
 				log.PrettyContent(content.Commands, content.Condition)
 			}
 		default:
-			log.Log(log.Error, "unknown command %s", args[0])
-			os.Exit(1)
+			log.Abort("unknown command %s", args[0])
 		}
 
 		return

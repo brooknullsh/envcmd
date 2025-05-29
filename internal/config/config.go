@@ -16,13 +16,11 @@ type content struct {
 
 func validateCondition(c []string) {
 	if len(c) != 2 {
-		log.Log(log.Error, "expected condition length to be 2, is %d", len(c))
-		os.Exit(1)
+		log.Abort("expected condition length to be 2, is %d", len(c))
 	}
 
 	if c[0] != "directory" && c[0] != "branch" {
-		log.Log(log.Error, "condition must be 'directory' or 'branch', is '%s'", c[0])
-		os.Exit(1)
+		log.Abort("condition must be 'directory' or 'branch', is '%s'", c[0])
 	}
 }
 
@@ -31,8 +29,7 @@ func readContent(file *os.File) []content {
 
 	err := json.NewDecoder(file).Decode(&content)
 	if err != nil {
-		log.Log(log.Error, "decoding JSON: %v", err)
-		os.Exit(1)
+		log.Abort("decoding JSON: %v", err)
 	}
 
 	for _, c := range content {
@@ -45,14 +42,12 @@ func readContent(file *os.File) []content {
 func writeToFile(c []content, file *os.File) {
 	jsonContent, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
-		log.Log(log.Error, "encoding JSON: %v", err)
-		os.Exit(1)
+		log.Abort("encoding JSON: %v", err)
 	}
 
 	_, err = file.Write(jsonContent)
 	if err != nil {
-		log.Log(log.Error, "writing: %v", err)
-		os.Exit(1)
+		log.Abort("writing: %v", err)
 	}
 }
 
@@ -68,8 +63,7 @@ func (c Config) doesConfigExist() bool {
 func (c *Config) FindPath() {
 	user, err := user.Current()
 	if err != nil {
-		log.Log(log.Error, "failed getting user: %v", err)
-		os.Exit(1)
+		log.Abort("failed getting user: %v", err)
 	}
 
 	c.filePath = filepath.Join(user.HomeDir, ".envcmd/config.json")
@@ -77,21 +71,18 @@ func (c *Config) FindPath() {
 
 func (c Config) Create() {
 	if c.doesConfigExist() {
-		log.Log(log.Error, "configuration already exists")
-		return
+		log.Abort("configuration already exists")
 	}
 
 	dirPath := filepath.Dir(c.filePath)
 	err := os.MkdirAll(dirPath, 0755)
 	if err != nil {
-		log.Log(log.Error, "creating directory at %s: %v", dirPath, err)
-		os.Exit(1)
+		log.Abort("creating directory at %s: %v", dirPath, err)
 	}
 
 	file, err := os.Create(c.filePath)
 	if err != nil {
-		log.Log(log.Error, "creating file at %s: %v", c.filePath, err)
-		os.Exit(1)
+		log.Abort("creating file at %s: %v", c.filePath, err)
 	}
 
 	defer file.Close()
@@ -113,14 +104,12 @@ func (c Config) Create() {
 
 func (c Config) Delete() {
 	if !c.doesConfigExist() {
-		log.Log(log.Error, "configuration doesn't exist")
-		return
+		log.Abort("configuration doesn't exist")
 	}
 
 	err := os.Remove(c.filePath)
 	if err != nil {
-		log.Log(log.Error, "removing file at %s: %v", c.filePath, err)
-		os.Exit(1)
+		log.Abort("removing file at %s: %v", c.filePath, err)
 	}
 
 	log.Log(log.Info, "deleted from %s", c.filePath)
@@ -128,14 +117,12 @@ func (c Config) Delete() {
 
 func (c Config) Read() []content {
 	if !c.doesConfigExist() {
-		log.Log(log.Error, "configuration doesn't exist")
-		return nil
+		log.Abort("configuration doesn't exist")
 	}
 
 	file, err := os.Open(c.filePath)
 	if err != nil {
-		log.Log(log.Error, "opening file at %s: %v", c.filePath, err)
-		os.Exit(1)
+		log.Abort("opening file at %s: %v", c.filePath, err)
 	}
 
 	defer file.Close()

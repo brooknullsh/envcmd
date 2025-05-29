@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"os"
 	"os/exec"
 
 	"github.com/brooknullsh/envcmd/internal/log"
@@ -27,8 +26,7 @@ func Run(command string) {
 
 	err = cmd.Start()
 	if err != nil {
-		log.Log(log.Error, "starting command: %v", err)
-		os.Exit(1)
+		log.Abort("starting command: %v", err)
 	}
 
 	scanner := bufio.NewScanner(stdout)
@@ -36,7 +34,6 @@ func Run(command string) {
 
 	err = cmd.Wait()
 	if err != nil {
-		log.Log(log.Error, "exited: %v", err)
-		os.Exit(1)
+		log.Abort("exited: %v", err)
 	}
 }

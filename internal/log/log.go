@@ -40,6 +40,11 @@ func Log(level string, format string, args ...any) {
 	fmt.Fprintf(os.Stdout, "\x1b[1m%s[%s]%s %s\n", colour, level, reset, content)
 }
 
+func Abort(format string, args ...any) {
+	Log(Error, format, args...)
+	os.Exit(1)
+}
+
 func PrettyContent(commands []string, conditionals []string) {
 	for index, command := range commands {
 		Log(

@@ -14,8 +14,7 @@ func branchMatch(actual string) bool {
 
 	output, err := cmd.Output()
 	if err != nil {
-		log.Log(log.Error, "reading git branch: %v", err)
-		os.Exit(1)
+		log.Abort("reading git branch: %v", err)
 	}
 
 	return strings.TrimSpace(string(output)) == actual
@@ -24,8 +23,7 @@ func branchMatch(actual string) bool {
 func directoryMatch(actual string) bool {
 	path, err := os.Getwd()
 	if err != nil {
-		log.Log(log.Error, "reading current directory: %v", err)
-		os.Exit(1)
+		log.Abort("reading current directory: %v", err)
 	}
 
 	return filepath.Base(path) == actual
