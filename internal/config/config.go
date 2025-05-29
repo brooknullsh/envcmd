@@ -9,13 +9,25 @@ import (
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
-type Content struct {
+type content struct {
 	Condition []string `json:"condition"`
 	Commands  []string `json:"commands"`
 }
 
-func readContent(file *os.File) []Content {
-	var content []Content
+func validateCondition(c []string) {
+	if len(c) != 2 {
+		log.Log(log.Error, "expected condition length to be 2, is %d", len(c))
+		os.Exit(1)
+	}
+
+	if c[0] != "directory" && c[0] != "branch" {
+		log.Log(log.Error, "condition must be 'directory' or 'branch', is '%s'", c[0])
+		os.Exit(1)
+	}
+}
+
+func readContent(file *os.File) []content {
+	var content []content
 
 	err := json.NewDecoder(file).Decode(&content)
 	if err != nil {
@@ -23,10 +35,14 @@ func readContent(file *os.File) []Content {
 		os.Exit(1)
 	}
 
+	for _, c := range content {
+		validateCondition(c.Condition)
+	}
+
 	return content
 }
 
-func writeToFile(c []Content, file *os.File) {
+func writeToFile(c []content, file *os.File) {
 	jsonContent, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		log.Log(log.Error, "encoding JSON: %v", err)
@@ -80,7 +96,7 @@ func (c Config) Create() {
 
 	defer file.Close()
 
-	defaultContent := []Content{
+	defaultContent := []content{
 		{
 			Condition: []string{"directory", "foo"},
 			Commands:  []string{"echo 'Hello, foo!'"},
@@ -110,7 +126,7 @@ func (c Config) Delete() {
 	log.Log(log.Info, "deleted from %s", c.filePath)
 }
 
-func (c Config) Read() []Content {
+func (c Config) Read() []content {
 	if !c.doesConfigExist() {
 		log.Log(log.Error, "configuration doesn't exist")
 		return nil
