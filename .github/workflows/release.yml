@@ -1,12 +1,12 @@
 name: Main Release
 
+on:
+  release:
+    types: [created]
+
 permissions:
   contents: write
-
-on:
-  push:
-    tags:
-      - "v*"
+  packages: write
 
 jobs:
   release-linux-amd64:
