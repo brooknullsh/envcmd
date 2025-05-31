@@ -2,8 +2,6 @@ name: Release
 
 on:
   push:
-    tags:
-      - v*
 
 permissions:
   contents: write
@@ -27,6 +25,4 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          args: build --snapshot --clean

@@ -25,7 +25,7 @@ archives:
 brews:
   - repository:
       owner: brooknullsh
-      name: envcmd
+      name: homebrew-tap
     homepage: https://github.com/brooknullsh/envcmd
     description: Command line tool for running per-environment commands.
     license: MIT
