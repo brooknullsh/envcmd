@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"sync"
 
 	"github.com/brooknullsh/envcmd/internal/cmd"
 	"github.com/brooknullsh/envcmd/internal/config"
@@ -44,8 +45,25 @@ func main() {
 			continue
 		}
 
-		for _, command := range item.Commands {
-			cmd.Run(command)
+		channel := make(chan string)
+		var producerWg sync.WaitGroup
+		var consumerWg sync.WaitGroup
+
+		consumerWg.Add(1)
+		go func() {
+			defer consumerWg.Done()
+			for cmd := range channel {
+				log.Log(log.Info, "%s", cmd)
+			}
+		}()
+
+		for index, command := range item.Commands {
+			producerWg.Add(1)
+			go cmd.Run(index, command, channel, &producerWg)
 		}
+
+		producerWg.Wait()
+		close(channel)
+		consumerWg.Wait()
 	}
 }

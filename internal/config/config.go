@@ -27,8 +27,7 @@ func validateCondition(c []string) {
 func readContent(file *os.File) []content {
 	var content []content
 
-	err := json.NewDecoder(file).Decode(&content)
-	if err != nil {
+	if err := json.NewDecoder(file).Decode(&content); err != nil {
 		log.Abort("decoding JSON: %v", err)
 	}
 
@@ -45,8 +44,7 @@ func writeToFile(c []content, file *os.File) {
 		log.Abort("encoding JSON: %v", err)
 	}
 
-	_, err = file.Write(jsonContent)
-	if err != nil {
+	if _, err = file.Write(jsonContent); err != nil {
 		log.Abort("writing: %v", err)
 	}
 }
@@ -75,8 +73,7 @@ func (c Config) Create() {
 	}
 
 	dirPath := filepath.Dir(c.filePath)
-	err := os.MkdirAll(dirPath, 0755)
-	if err != nil {
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
 		log.Abort("creating directory at %s: %v", dirPath, err)
 	}
 
@@ -107,8 +104,7 @@ func (c Config) Delete() {
 		log.Abort("configuration doesn't exist")
 	}
 
-	err := os.Remove(c.filePath)
-	if err != nil {
+	if err := os.Remove(c.filePath); err != nil {
 		log.Abort("removing file at %s: %v", c.filePath, err)
 	}
 

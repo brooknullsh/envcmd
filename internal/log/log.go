@@ -18,7 +18,12 @@ const (
 	green  = "\033[32m"
 	yellow = "\033[33m"
 	blue   = "\033[34m"
+	purple = "\033[35m"
+	orange = "\033[36m"
+	grey   = "\033[37m"
 )
+
+var Colours = []string{purple, orange, grey}
 
 func Log(level string, format string, args ...any) {
 	var colour string
