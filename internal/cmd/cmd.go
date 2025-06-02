@@ -10,23 +10,23 @@ import (
 )
 
 var (
-	colourIndex int
-	colourMutex sync.Mutex
+	colIdx int
+	colMtx sync.Mutex
 )
 
 func nextColour() string {
-	colourMutex.Lock()
-	defer colourMutex.Unlock()
+	colMtx.Lock()
+	defer colMtx.Unlock()
 
-	colour := log.Colours[colourIndex]
-	colourIndex = (colourIndex + 1) % len(log.Colours)
-	return colour
+	col := log.Colours[colIdx]
+	colIdx = (colIdx + 1) % len(log.Colours)
+	return col
 }
 
-func Run(index int, command string, channel chan string, wg *sync.WaitGroup) {
+func Run(idx int, cmdStr string, ch chan string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	cmd := exec.Command("bash", "-c", command)
+	cmd := exec.Command("bash", "-c", cmdStr)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Log(log.Warn, "failed to pipe stdout: %v", err)
@@ -36,13 +36,13 @@ func Run(index int, command string, channel chan string, wg *sync.WaitGroup) {
 		log.Abort("starting command: %v", err)
 	}
 
-	colour := nextColour()
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		channel <- fmt.Sprintf("%s(%d)\033[0m %s", colour, index, scanner.Text())
+	col := nextColour()
+	s := bufio.NewScanner(stdout)
+	for s.Scan() {
+		ch <- fmt.Sprintf("%s(%d)\033[0m %s", col, idx, s.Text())
 	}
 
-	if err := scanner.Err(); err != nil {
+	if err := s.Err(); err != nil {
 		log.Log(log.Warn, "reading stdout: %v", err)
 	}
 

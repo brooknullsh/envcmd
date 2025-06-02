@@ -9,7 +9,7 @@ import (
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
-type content struct {
+type Content struct {
 	Condition []string `json:"condition"`
 	Commands  []string `json:"commands"`
 }
@@ -24,27 +24,27 @@ func validateCondition(c []string) {
 	}
 }
 
-func readContent(file *os.File) []content {
-	var content []content
+func readContent(f *os.File) []Content {
+	var cont []Content
 
-	if err := json.NewDecoder(file).Decode(&content); err != nil {
+	if err := json.NewDecoder(f).Decode(&cont); err != nil {
 		log.Abort("decoding JSON: %v", err)
 	}
 
-	for _, c := range content {
+	for _, c := range cont {
 		validateCondition(c.Condition)
 	}
 
-	return content
+	return cont
 }
 
-func writeToFile(c []content, file *os.File) {
-	jsonContent, err := json.MarshalIndent(c, "", "  ")
+func writeToFile(c []Content, f *os.File) {
+	json, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		log.Abort("encoding JSON: %v", err)
 	}
 
-	if _, err = file.Write(jsonContent); err != nil {
+	if _, err = f.Write(json); err != nil {
 		log.Abort("writing: %v", err)
 	}
 }
@@ -58,13 +58,13 @@ func (c Config) doesConfigExist() bool {
 	return err == nil
 }
 
-func (c *Config) FindPath() {
-	user, err := user.Current()
+func (c *Config) InitPath() {
+	u, err := user.Current()
 	if err != nil {
 		log.Abort("failed getting user: %v", err)
 	}
 
-	c.filePath = filepath.Join(user.HomeDir, ".envcmd/config.json")
+	c.filePath = filepath.Join(u.HomeDir, ".envcmd/config.json")
 }
 
 func (c Config) Create() {
@@ -77,14 +77,14 @@ func (c Config) Create() {
 		log.Abort("creating directory at %s: %v", dirPath, err)
 	}
 
-	file, err := os.Create(c.filePath)
+	f, err := os.Create(c.filePath)
 	if err != nil {
 		log.Abort("creating file at %s: %v", c.filePath, err)
 	}
 
-	defer file.Close()
+	defer f.Close()
 
-	defaultContent := []content{
+	defaultCont := []Content{
 		{
 			Condition: []string{"directory", "foo"},
 			Commands:  []string{"echo 'Hello, foo!'"},
@@ -95,7 +95,7 @@ func (c Config) Create() {
 		},
 	}
 
-	writeToFile(defaultContent, file)
+	writeToFile(defaultCont, f)
 	log.Log(log.Info, "created at %s", c.filePath)
 }
 
@@ -108,21 +108,26 @@ func (c Config) Delete() {
 		log.Abort("removing file at %s: %v", c.filePath, err)
 	}
 
+	dirPath := filepath.Dir(c.filePath)
+	if err := os.Remove(dirPath); err != nil {
+		log.Abort("removing directory at %s: %v", dirPath, err)
+	}
+
 	log.Log(log.Info, "deleted from %s", c.filePath)
 }
 
-func (c Config) Read() []content {
+func (c Config) Read() []Content {
 	if !c.doesConfigExist() {
 		log.Abort("configuration doesn't exist")
 	}
 
-	file, err := os.Open(c.filePath)
+	f, err := os.Open(c.filePath)
 	if err != nil {
 		log.Abort("opening file at %s: %v", c.filePath, err)
 	}
 
-	defer file.Close()
+	defer f.Close()
 
 	log.Log(log.Debug, "read from %s", c.filePath)
-	return readContent(file)
+	return readContent(f)
 }

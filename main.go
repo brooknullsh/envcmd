@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"sync"
 
@@ -10,6 +11,54 @@ import (
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
+func handleCommand(cmdStr string, c *config.Config) {
+	switch cmdStr {
+	case "create", "-c":
+		c.Create()
+	case "delete", "-d":
+		c.Delete()
+	case "show", "-s":
+		for _, cont := range c.Read() {
+			log.PrettyContent(cont.Commands, cont.Condition)
+		}
+	case "-h", "--help":
+		fmt.Println("Usage: envcmd COMMAND")
+		fmt.Println("\nCommand line tool for running per-environment commands.")
+		fmt.Println("\nOptions:")
+		fmt.Println("  -h, --help  Show this message and exit.")
+		fmt.Println("\nCommands:")
+		fmt.Println("  -c, create  Create configuration file.")
+		fmt.Println("  -d, delete  Delete configuration file.")
+		fmt.Println("  -s, show    Show configuration file contents.")
+	default:
+		log.Abort("unknown command %s", cmdStr)
+	}
+}
+
+func runAsync(cont config.Content) {
+	ch := make(chan string)
+	var prodWg sync.WaitGroup
+	var consWg sync.WaitGroup
+
+	consWg.Add(1)
+	go func() {
+		defer consWg.Done()
+
+		for out := range ch {
+			log.Log(log.Info, "%s", out)
+		}
+	}()
+
+	for idx, cmdStr := range cont.Commands {
+		prodWg.Add(1)
+		go cmd.Run(idx, cmdStr, ch, &prodWg)
+	}
+
+	prodWg.Wait()
+	close(ch)
+	consWg.Wait()
+}
+
 func main() {
 	args := os.Args[1:]
 
@@ -17,53 +66,22 @@ func main() {
 		log.Abort("expected 1 argument or none, got %d", len(args))
 	}
 
-	var config config.Config
-	config.FindPath()
+	var c config.Config
+	c.InitPath()
 
 	if len(args) == 1 {
-		switch args[0] {
-		case "create":
-			config.Create()
-		case "delete":
-			config.Delete()
-		case "show":
-			for _, content := range config.Read() {
-				log.PrettyContent(content.Commands, content.Condition)
-			}
-		default:
-			log.Abort("unknown command %s", args[0])
-		}
-
+		handleCommand(args[0], &c)
 		return
 	}
 
-	for _, item := range config.Read() {
-		ctx, expected := item.Condition[0], item.Condition[1]
+	for _, cont := range c.Read() {
+		ctx, exp := cont.Condition[0], cont.Condition[1]
 
-		if !context.Match(ctx, expected) {
-			log.Log(log.Warn, "%s is \x1b[1mNOT\033[0m %s", ctx, expected)
+		if !context.Match(ctx, exp) {
+			log.Log(log.Warn, "%s is \x1b[1mNOT\033[0m %s", ctx, exp)
 			continue
 		}
 
-		channel := make(chan string)
-		var producerWg sync.WaitGroup
-		var consumerWg sync.WaitGroup
-
-		consumerWg.Add(1)
-		go func() {
-			defer consumerWg.Done()
-			for cmd := range channel {
-				log.Log(log.Info, "%s", cmd)
-			}
-		}()
-
-		for index, command := range item.Commands {
-			producerWg.Add(1)
-			go cmd.Run(index, command, channel, &producerWg)
-		}
-
-		producerWg.Wait()
-		close(channel)
-		consumerWg.Wait()
+		runAsync(cont)
 	}
 }

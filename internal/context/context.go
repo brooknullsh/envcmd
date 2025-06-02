@@ -9,33 +9,38 @@ import (
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
-func branchMatch(actual string) bool {
+func branchMatch(exp string) bool {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 
-	output, err := cmd.Output()
+	out, err := cmd.Output()
 	if err != nil {
+		if e, ok := err.(*exec.ExitError); ok && e.ExitCode() == 128 {
+			log.Log(log.Debug, "no git in current directory")
+			return false
+		}
+
 		log.Abort("reading git branch: %v", err)
 	}
 
-	return strings.TrimSpace(string(output)) == actual
+	return strings.TrimSpace(string(out)) == exp
 }
 
-func directoryMatch(actual string) bool {
-	path, err := os.Getwd()
+func directoryMatch(exp string) bool {
+	p, err := os.Getwd()
 	if err != nil {
 		log.Abort("reading current directory: %v", err)
 	}
 
-	return filepath.Base(path) == actual
+	return filepath.Base(p) == exp
 }
 
-func Match(context string, actual string) bool {
-	if context == "directory" {
-		return directoryMatch(actual)
-	} else if context == "branch" {
-		return branchMatch(actual)
+func Match(ctx string, exp string) bool {
+	if ctx == "directory" {
+		return directoryMatch(exp)
+	} else if ctx == "branch" {
+		return branchMatch(exp)
 	}
 
-	log.Log(log.Debug, "no %s match for %s", context, actual)
+	log.Log(log.Debug, "no %s match for %s", ctx, exp)
 	return false
 }

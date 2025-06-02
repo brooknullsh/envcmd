@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	Debug = "DEBUG"
-	Info  = "INFO"
-	Warn  = "WARN"
-	Error = "ERROR"
+	Debug = "D"
+	Info  = "I"
+	Warn  = "W"
+	Error = "E"
 )
 
 const (
@@ -25,39 +25,39 @@ const (
 
 var Colours = []string{purple, orange, grey}
 
-func Log(level string, format string, args ...any) {
-	var colour string
+func Log(lvl string, format string, args ...any) {
+	var col string
 
-	switch level {
+	switch lvl {
 	case Debug:
-		colour = blue
+		col = blue
 	case Info:
-		colour = green
+		col = green
 	case Warn:
-		colour = yellow
+		col = yellow
 	case Error:
-		colour = red
+		col = red
 	default:
-		colour = reset
+		col = reset
 	}
 
-	content := fmt.Sprintf(format, args...)
-	fmt.Fprintf(os.Stdout, "\x1b[1m%s[%s]%s %s\n", colour, level, reset, content)
+	txt := fmt.Sprintf(format, args...)
+	fmt.Fprintf(os.Stdout, "\x1b[1m%s%s.%s %s\n", col, lvl, reset, txt)
 }
 
-func Abort(format string, args ...any) {
-	Log(Error, format, args...)
+func Abort(fmt string, args ...any) {
+	Log(Error, fmt, args...)
 	os.Exit(1)
 }
 
-func PrettyContent(commands []string, conditionals []string) {
-	for index, command := range commands {
+func PrettyContent(cmds []string, conds []string) {
+	for idx, command := range cmds {
 		Log(
 			Info,
-			"(%d) if %s is %s then run %s",
-			index+1,
-			conditionals[0],
-			conditionals[1],
+			"%s = \x1b[1m%s\033[0m %d. \x1b[1m%s\033[0m",
+			conds[0],
+			conds[1],
+			idx,
 			command,
 		)
 	}
