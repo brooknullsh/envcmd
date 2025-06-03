@@ -130,7 +130,5 @@ func (c Config) Read() []Content {
 	}
 
 	defer configFile.Close()
-
-	log.Log(log.Debug, "read from %s", c.filePath)
 	return readContent(configFile)
 }

@@ -48,18 +48,22 @@ func sharedRun(command string, handleStdout func(stdout string)) {
 	}
 }
 
-func AsyncRun(idx int, command string, stdoutChannel chan<- string, producerWg *sync.WaitGroup) {
+func AsyncRun(command string, stdoutChannel chan<- string, producerWg *sync.WaitGroup) {
 	defer producerWg.Done()
 
 	colour := nextColour()
+	log.Log(log.Debug, "running %s%s...", colour, command)
+
 	handleStdout := func(stdout string) {
-		stdoutChannel <- fmt.Sprintf("%s(%d)\033[0m %s", colour, idx, stdout)
+		stdoutChannel <- fmt.Sprintf("%s%s", colour, stdout)
 	}
 
 	sharedRun(command, handleStdout)
 }
 
 func Run(command string) {
+	log.Log(log.Debug, "running %s...", command)
+
 	handleStdout := func(stdout string) {
 		log.Log(log.Info, "%s", stdout)
 	}

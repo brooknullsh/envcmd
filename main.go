@@ -11,16 +11,17 @@ import (
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
-func prettyPrint(commands []string, condition []string) {
-	for idx, cmd := range commands {
-		log.Log(
-			log.Info,
-			"%s = \x1b[1m%s\033[0m %d. \x1b[1m%s\033[0m",
-			condition[0],
-			condition[1],
-			idx,
-			cmd,
-		)
+func prettyPrint(commands []string, condition []string, isAsync bool) {
+	var asyncFlag string
+	if isAsync {
+		asyncFlag = "(async) "
+	}
+
+	log.Log(log.Debug, "if \x1b[1m%s\033[0m is \x1b[1m%s\033[0m", condition[0], condition[1])
+	fmt.Println("---")
+
+	for _, cmd := range commands {
+		log.Log(log.Info, "%srun \x1b[1m%s\033[0m", asyncFlag, cmd)
 	}
 }
 
@@ -32,7 +33,7 @@ func handleCommand(command string, config *config.Config) {
 		config.Delete()
 	case "show", "-s":
 		for _, content := range config.Read() {
-			prettyPrint(content.Commands, content.Condition)
+			prettyPrint(content.Commands, content.Condition, content.Async)
 		}
 	case "help", "-h":
 		fmt.Println("Usage: envcmd COMMAND")
@@ -62,9 +63,9 @@ func runAsync(content config.Content) {
 		}
 	}()
 
-	for idx, command := range content.Commands {
+	for _, command := range content.Commands {
 		producerWg.Add(1)
-		go cmd.AsyncRun(idx, command, stdoutChannel, &producerWg)
+		go cmd.AsyncRun(command, stdoutChannel, &producerWg)
 	}
 
 	producerWg.Wait()
@@ -97,12 +98,8 @@ func main() {
 		ctx, expected := content.Condition[0], content.Condition[1]
 
 		if !context.Match(ctx, expected) {
-			log.Log(log.Warn, "%s is \x1b[1mNOT\033[0m %s", ctx, expected)
 			continue
 		}
-		fmt.Println("---")
-		log.Log(log.Debug, "%s \x1b[1mIS\033[0m %s", ctx, expected)
-		fmt.Println("---")
 
 		if content.Async {
 			runAsync(content)
