@@ -100,11 +100,15 @@ func main() {
 			log.Log(log.Warn, "%s is \x1b[1mNOT\033[0m %s", ctx, expected)
 			continue
 		}
+		fmt.Println("---")
+		log.Log(log.Debug, "%s \x1b[1mIS\033[0m %s", ctx, expected)
+		fmt.Println("---")
 
 		if content.Async {
 			runAsync(content)
-		} else {
-			run(content)
+			continue
 		}
+
+		run(content)
 	}
 }
