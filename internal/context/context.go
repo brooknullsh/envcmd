@@ -9,12 +9,12 @@ import (
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
-func branchMatch(exp string) bool {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+func branchMatch(actual string) bool {
+	command := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 
-	out, err := cmd.Output()
+	stdout, err := command.Output()
 	if err != nil {
-		if e, ok := err.(*exec.ExitError); ok && e.ExitCode() == 128 {
+		if exit, ok := err.(*exec.ExitError); ok && exit.ExitCode() == 128 {
 			log.Log(log.Debug, "no git in current directory")
 			return false
 		}
@@ -22,25 +22,25 @@ func branchMatch(exp string) bool {
 		log.Abort("reading git branch: %v", err)
 	}
 
-	return strings.TrimSpace(string(out)) == exp
+	return strings.TrimSpace(string(stdout)) == actual
 }
 
-func directoryMatch(exp string) bool {
-	p, err := os.Getwd()
+func directoryMatch(actual string) bool {
+	dirPath, err := os.Getwd()
 	if err != nil {
 		log.Abort("reading current directory: %v", err)
 	}
 
-	return filepath.Base(p) == exp
+	return filepath.Base(dirPath) == actual
 }
 
-func Match(ctx string, exp string) bool {
-	if ctx == "directory" {
-		return directoryMatch(exp)
-	} else if ctx == "branch" {
-		return branchMatch(exp)
+func Match(context string, actual string) bool {
+	if context == "directory" {
+		return directoryMatch(actual)
+	} else if context == "branch" {
+		return branchMatch(actual)
 	}
 
-	log.Log(log.Debug, "no %s match for %s", ctx, exp)
+	log.Log(log.Debug, "no %s match for %s", context, actual)
 	return false
 }

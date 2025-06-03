@@ -25,40 +25,27 @@ const (
 
 var Colours = []string{purple, orange, grey}
 
-func Log(lvl string, format string, args ...any) {
-	var col string
+func Log(level string, format string, args ...any) {
+	var colour string
 
-	switch lvl {
+	switch level {
 	case Debug:
-		col = blue
+		colour = blue
 	case Info:
-		col = green
+		colour = green
 	case Warn:
-		col = yellow
+		colour = yellow
 	case Error:
-		col = red
+		colour = red
 	default:
-		col = reset
+		colour = reset
 	}
 
-	txt := fmt.Sprintf(format, args...)
-	fmt.Fprintf(os.Stdout, "\x1b[1m%s%s.%s %s\n", col, lvl, reset, txt)
+	output := fmt.Sprintf(format, args...)
+	fmt.Fprintf(os.Stdout, "\x1b[1m%s%s.%s %s\n", colour, level, reset, output)
 }
 
-func Abort(fmt string, args ...any) {
-	Log(Error, fmt, args...)
+func Abort(format string, args ...any) {
+	Log(Error, format, args...)
 	os.Exit(1)
-}
-
-func PrettyContent(cmds []string, conds []string) {
-	for idx, command := range cmds {
-		Log(
-			Info,
-			"%s = \x1b[1m%s\033[0m %d. \x1b[1m%s\033[0m",
-			conds[0],
-			conds[1],
-			idx,
-			command,
-		)
-	}
 }

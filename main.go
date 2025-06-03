@@ -11,17 +11,30 @@ import (
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
-func handleCommand(cmdStr string, c *config.Config) {
-	switch cmdStr {
+func prettyPrint(commands []string, condition []string) {
+	for idx, cmd := range commands {
+		log.Log(
+			log.Info,
+			"%s = \x1b[1m%s\033[0m %d. \x1b[1m%s\033[0m",
+			condition[0],
+			condition[1],
+			idx,
+			cmd,
+		)
+	}
+}
+
+func handleCommand(command string, config *config.Config) {
+	switch command {
 	case "create", "-c":
-		c.Create()
+		config.Create()
 	case "delete", "-d":
-		c.Delete()
+		config.Delete()
 	case "show", "-s":
-		for _, cont := range c.Read() {
-			log.PrettyContent(cont.Commands, cont.Condition)
+		for _, content := range config.Read() {
+			prettyPrint(content.Commands, content.Condition)
 		}
-	case "-h", "--help":
+	case "help", "-h":
 		fmt.Println("Usage: envcmd COMMAND")
 		fmt.Println("\nCommand line tool for running per-environment commands.")
 		fmt.Println("\nOptions:")
@@ -31,32 +44,38 @@ func handleCommand(cmdStr string, c *config.Config) {
 		fmt.Println("  -d, delete  Delete configuration file.")
 		fmt.Println("  -s, show    Show configuration file contents.")
 	default:
-		log.Abort("unknown command %s", cmdStr)
+		log.Abort("unknown command %s", command)
 	}
 }
 
-func runAsync(cont config.Content) {
-	ch := make(chan string)
-	var prodWg sync.WaitGroup
-	var consWg sync.WaitGroup
+func runAsync(content config.Content) {
+	stdoutChannel := make(chan string)
+	var producerWg sync.WaitGroup
+	var consumerWg sync.WaitGroup
 
-	consWg.Add(1)
+	consumerWg.Add(1)
 	go func() {
-		defer consWg.Done()
+		defer consumerWg.Done()
 
-		for out := range ch {
-			log.Log(log.Info, "%s", out)
+		for stdout := range stdoutChannel {
+			log.Log(log.Info, "%s", stdout)
 		}
 	}()
 
-	for idx, cmdStr := range cont.Commands {
-		prodWg.Add(1)
-		go cmd.Run(idx, cmdStr, ch, &prodWg)
+	for idx, command := range content.Commands {
+		producerWg.Add(1)
+		go cmd.AsyncRun(idx, command, stdoutChannel, &producerWg)
 	}
 
-	prodWg.Wait()
-	close(ch)
-	consWg.Wait()
+	producerWg.Wait()
+	close(stdoutChannel)
+	consumerWg.Wait()
+}
+
+func run(content config.Content) {
+	for _, command := range content.Commands {
+		cmd.Run(command)
+	}
 }
 
 func main() {
@@ -66,22 +85,26 @@ func main() {
 		log.Abort("expected 1 argument or none, got %d", len(args))
 	}
 
-	var c config.Config
-	c.InitPath()
+	var config config.Config
+	config.InitPath()
 
 	if len(args) == 1 {
-		handleCommand(args[0], &c)
+		handleCommand(args[0], &config)
 		return
 	}
 
-	for _, cont := range c.Read() {
-		ctx, exp := cont.Condition[0], cont.Condition[1]
+	for _, content := range config.Read() {
+		ctx, expected := content.Condition[0], content.Condition[1]
 
-		if !context.Match(ctx, exp) {
-			log.Log(log.Warn, "%s is \x1b[1mNOT\033[0m %s", ctx, exp)
+		if !context.Match(ctx, expected) {
+			log.Log(log.Warn, "%s is \x1b[1mNOT\033[0m %s", ctx, expected)
 			continue
 		}
 
-		runAsync(cont)
+		if content.Async {
+			runAsync(content)
+		} else {
+			run(content)
+		}
 	}
 }

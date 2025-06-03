@@ -10,41 +10,42 @@ import (
 )
 
 type Content struct {
+	Async     bool     `json:"async"`
 	Condition []string `json:"condition"`
 	Commands  []string `json:"commands"`
 }
 
-func validateCondition(c []string) {
-	if len(c) != 2 {
-		log.Abort("expected condition length to be 2, is %d", len(c))
+func validateCondition(condition []string) {
+	if len(condition) != 2 {
+		log.Abort("expected condition length to be 2, is %d", len(condition))
 	}
 
-	if c[0] != "directory" && c[0] != "branch" {
-		log.Abort("condition must be 'directory' or 'branch', is '%s'", c[0])
+	if condition[0] != "directory" && condition[0] != "branch" {
+		log.Abort("condition must be 'directory' or 'branch', is '%s'", condition[0])
 	}
 }
 
-func readContent(f *os.File) []Content {
-	var cont []Content
+func readContent(configFile *os.File) []Content {
+	var configContent []Content
 
-	if err := json.NewDecoder(f).Decode(&cont); err != nil {
+	if err := json.NewDecoder(configFile).Decode(&configContent); err != nil {
 		log.Abort("decoding JSON: %v", err)
 	}
 
-	for _, c := range cont {
-		validateCondition(c.Condition)
+	for _, content := range configContent {
+		validateCondition(content.Condition)
 	}
 
-	return cont
+	return configContent
 }
 
-func writeToFile(c []Content, f *os.File) {
-	json, err := json.MarshalIndent(c, "", "  ")
+func writeToFile(contents []Content, configFile *os.File) {
+	json, err := json.MarshalIndent(contents, "", "  ")
 	if err != nil {
 		log.Abort("encoding JSON: %v", err)
 	}
 
-	if _, err = f.Write(json); err != nil {
+	if _, err = configFile.Write(json); err != nil {
 		log.Abort("writing: %v", err)
 	}
 }
@@ -59,12 +60,12 @@ func (c Config) doesConfigExist() bool {
 }
 
 func (c *Config) InitPath() {
-	u, err := user.Current()
+	user, err := user.Current()
 	if err != nil {
 		log.Abort("failed getting user: %v", err)
 	}
 
-	c.filePath = filepath.Join(u.HomeDir, ".envcmd/config.json")
+	c.filePath = filepath.Join(user.HomeDir, ".envcmd/config.json")
 }
 
 func (c Config) Create() {
@@ -77,25 +78,27 @@ func (c Config) Create() {
 		log.Abort("creating directory at %s: %v", dirPath, err)
 	}
 
-	f, err := os.Create(c.filePath)
+	configFile, err := os.Create(c.filePath)
 	if err != nil {
 		log.Abort("creating file at %s: %v", c.filePath, err)
 	}
 
-	defer f.Close()
+	defer configFile.Close()
 
-	defaultCont := []Content{
+	defaultContent := []Content{
 		{
+			Async:     true,
 			Condition: []string{"directory", "foo"},
 			Commands:  []string{"echo 'Hello, foo!'"},
 		},
 		{
+			Async:     false,
 			Condition: []string{"branch", "bar"},
 			Commands:  []string{"echo 'Hello, bar!'"},
 		},
 	}
 
-	writeToFile(defaultCont, f)
+	writeToFile(defaultContent, configFile)
 	log.Log(log.Info, "created at %s", c.filePath)
 }
 
@@ -121,13 +124,13 @@ func (c Config) Read() []Content {
 		log.Abort("configuration doesn't exist")
 	}
 
-	f, err := os.Open(c.filePath)
+	configFile, err := os.Open(c.filePath)
 	if err != nil {
 		log.Abort("opening file at %s: %v", c.filePath, err)
 	}
 
-	defer f.Close()
+	defer configFile.Close()
 
 	log.Log(log.Debug, "read from %s", c.filePath)
-	return readContent(f)
+	return readContent(configFile)
 }
