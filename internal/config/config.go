@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -10,43 +11,43 @@ import (
 )
 
 type Content struct {
-	Async     bool     `json:"async"`
-	Condition []string `json:"condition"`
-	Commands  []string `json:"commands"`
+	Name     string   `json:"name"`
+	Async    bool     `json:"async"`
+	Context  string   `json:"context"`
+	Target   string   `json:"target"`
+	Commands []string `json:"commands"`
 }
 
-func validateCondition(condition []string) {
-	if len(condition) != 2 {
-		log.Abort("expected condition length to be 2, is %d", len(condition))
-	}
+func (c Content) Print() {
+	log.Info("Name\t\x1b[1m%s\033[0m", c.Name)
+	log.Info("Context\t\x1b[1m%s\033[0m", c.Context)
+	log.Info("Target\t\x1b[1m%s\033[0m", c.Target)
+	log.Info("Async\t\x1b[1m%v\033[0m", c.Async)
 
-	if condition[0] != "directory" && condition[0] != "branch" {
-		log.Abort("condition must be 'directory' or 'branch', is '%s'", condition[0])
+	fmt.Println()
+	for _, cmd := range c.Commands {
+		log.Info("\x1b[1m%s\033[0m", cmd)
 	}
 }
 
-func readContent(configFile *os.File) []Content {
-	var configContent []Content
+func readContent(file *os.File) []Content {
+	var contents []Content
 
-	if err := json.NewDecoder(configFile).Decode(&configContent); err != nil {
-		log.Abort("decoding JSON: %v", err)
+	if err := json.NewDecoder(file).Decode(&contents); err != nil {
+		log.Abort("decoding JSON -> %v", err)
 	}
 
-	for _, content := range configContent {
-		validateCondition(content.Condition)
-	}
-
-	return configContent
+	return contents
 }
 
-func writeToFile(contents []Content, configFile *os.File) {
+func writeToFile(contents []Content, file *os.File) {
 	json, err := json.MarshalIndent(contents, "", "  ")
 	if err != nil {
-		log.Abort("encoding JSON: %v", err)
+		log.Abort("encoding JSON -> %v", err)
 	}
 
-	if _, err = configFile.Write(json); err != nil {
-		log.Abort("writing: %v", err)
+	if _, err = file.Write(json); err != nil {
+		log.Abort("writing -> %v", err)
 	}
 }
 
@@ -54,7 +55,7 @@ type Config struct {
 	filePath string
 }
 
-func (c Config) doesConfigExist() bool {
+func (c Config) configExists() bool {
 	_, err := os.Stat(c.filePath)
 	return err == nil
 }
@@ -62,73 +63,69 @@ func (c Config) doesConfigExist() bool {
 func (c *Config) InitPath() {
 	user, err := user.Current()
 	if err != nil {
-		log.Abort("failed getting user: %v", err)
+		log.Abort("failed getting user -> %v", err)
 	}
 
 	c.filePath = filepath.Join(user.HomeDir, ".envcmd/config.json")
 }
 
 func (c Config) Create() {
-	if c.doesConfigExist() {
-		log.Abort("configuration already exists")
+	if c.configExists() {
+		log.Abort("already exists -> %s", c.filePath)
 	}
 
 	dirPath := filepath.Dir(c.filePath)
 	if err := os.MkdirAll(dirPath, 0755); err != nil {
-		log.Abort("creating directory at %s: %v", dirPath, err)
+		log.Abort("creating directory -> %s: %v", dirPath, err)
 	}
 
-	configFile, err := os.Create(c.filePath)
+	file, err := os.Create(c.filePath)
 	if err != nil {
-		log.Abort("creating file at %s: %v", c.filePath, err)
+		log.Abort("creating file -> %s: %v", c.filePath, err)
 	}
 
-	defer configFile.Close()
-
-	defaultContent := []Content{
+	defer file.Close()
+	content := []Content{
 		{
-			Async:     true,
-			Condition: []string{"directory", "foo"},
-			Commands:  []string{"echo 'Hello, foo!'"},
-		},
-		{
-			Async:     false,
-			Condition: []string{"branch", "bar"},
-			Commands:  []string{"echo 'Hello, bar!'"},
+			Name:     "foo",
+			Async:    true,
+			Context:  "directory",
+			Target:   "bar",
+			Commands: []string{"echo 'Hello, bar!'"},
 		},
 	}
 
-	writeToFile(defaultContent, configFile)
-	log.Log(log.Info, "created at %s", c.filePath)
+	writeToFile(content, file)
+	log.Info("created -> %s", c.filePath)
 }
 
 func (c Config) Delete() {
-	if !c.doesConfigExist() {
-		log.Abort("configuration doesn't exist")
+	if !c.configExists() {
+		log.Abort("no config found")
 	}
 
 	if err := os.Remove(c.filePath); err != nil {
-		log.Abort("removing file at %s: %v", c.filePath, err)
+		log.Abort("removing file -> %s: %v", c.filePath, err)
 	}
 
 	dirPath := filepath.Dir(c.filePath)
 	if err := os.Remove(dirPath); err != nil {
-		log.Abort("removing directory at %s: %v", dirPath, err)
+		log.Abort("removing directory -> %s: %v", dirPath, err)
 	}
 
-	log.Log(log.Info, "deleted from %s", c.filePath)
+	log.Info("deleted -> %s", c.filePath)
 }
 
 func (c Config) Read() []Content {
-	if !c.doesConfigExist() {
-		log.Abort("configuration doesn't exist")
+	if !c.configExists() {
+		log.Abort("no config found")
 	}
 
-	configFile, err := os.Open(c.filePath)
+	file, err := os.Open(c.filePath)
 	if err != nil {
-		log.Abort("opening file at %s: %v", c.filePath, err)
+		log.Abort("opening file -> %s: %v", c.filePath, err)
 	}
 
-	defer configFile.Close()
-	return readContent(configFile)
+	defer file.Close()
+	return readContent(file)
 }

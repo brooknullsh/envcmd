@@ -3,9 +3,12 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"os/exec"
 	"sync"
 
+	"github.com/brooknullsh/envcmd/internal/config"
+	"github.com/brooknullsh/envcmd/internal/context"
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
@@ -14,7 +17,7 @@ var (
 	colourMutex sync.Mutex
 )
 
-func nextColour() string {
+func asyncColour() string {
 	colourMutex.Lock()
 	defer colourMutex.Unlock()
 
@@ -23,50 +26,86 @@ func nextColour() string {
 	return colour
 }
 
-func sharedRun(command string, handleStdout func(stdout string)) {
+func sharedRun(command string, fn func(out string)) {
 	cmd := exec.Command("bash", "-c", command)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Log(log.Warn, "failed to pipe stdout: %v", err)
+		log.Warn("failed to pipe stdout -> %v", err)
 	}
 
 	if err = cmd.Start(); err != nil {
-		log.Abort("starting command: %v", err)
+		log.Abort("starting command -> %v", err)
 	}
 
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
-		handleStdout(scanner.Text())
+		fn(scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Log(log.Warn, "reading stdout: %v", err)
+		log.Warn("reading stdout -> %v", err)
 	}
 
 	if err = cmd.Wait(); err != nil {
-		log.Abort("exited: %v", err)
+		log.Abort("exited -> %v", err)
 	}
 }
 
-func AsyncRun(command string, stdoutChannel chan<- string, producerWg *sync.WaitGroup) {
+func syncRun(content config.Content) {
+	fn := func(out string) {
+		fmt.Fprintf(os.Stdout, "%s\n", out)
+	}
+
+	for _, cmd := range content.Commands {
+		sharedRun(cmd, fn)
+	}
+}
+
+func asyncRun(command string, stdout chan<- string, producerWg *sync.WaitGroup) {
 	defer producerWg.Done()
 
-	colour := nextColour()
-	log.Log(log.Debug, "running %s%s...", colour, command)
-
-	handleStdout := func(stdout string) {
-		stdoutChannel <- fmt.Sprintf("%s%s", colour, stdout)
+	colour := asyncColour()
+	fn := func(out string) {
+		stdout <- fmt.Sprintf("%s%s\033[0m", colour, out)
 	}
 
-	sharedRun(command, handleStdout)
+	sharedRun(command, fn)
 }
 
-func Run(command string) {
-	log.Log(log.Debug, "running %s...", command)
+func readStdout(stdout <-chan string, consumerWg *sync.WaitGroup) {
+	defer consumerWg.Done()
 
-	handleStdout := func(stdout string) {
-		log.Log(log.Info, "%s", stdout)
+	for out := range stdout {
+		fmt.Fprintf(os.Stdout, "%s\n", out)
+	}
+}
+
+func Run(content config.Content) {
+	if !context.Match(content) {
+		log.Warn("no \x1b[1m%s\033[0m match for \x1b[1m%s\033[0m", content.Context, content.Target)
+		return
 	}
 
-	sharedRun(command, handleStdout)
+	log.Info("matched with \x1b[1m%s\033[0m", content.Name)
+
+	if !content.Async {
+		syncRun(content)
+		return
+	}
+
+	stdout := make(chan string)
+	var producerWg sync.WaitGroup
+	var consumerWg sync.WaitGroup
+
+	consumerWg.Add(1)
+	go readStdout(stdout, &consumerWg)
+
+	for _, cmd := range content.Commands {
+		producerWg.Add(1)
+		go asyncRun(cmd, stdout, &producerWg)
+	}
+
+	producerWg.Wait()
+	close(stdout)
+	consumerWg.Wait()
 }

@@ -51,7 +51,7 @@ latest version.
 
 > Run `envcmd delete` or `envcmd -d` to delete your config file
 
-2. Run `envcmd show` or `envcmd -s` to show all configurations
+2. Run `envcmd list` or `envcmd -l` to list all configurations
 3. Change the config file with your directory/branch name and the commands to
 run
 4. Run `envcmd` to execute the commands matching the directory/branch

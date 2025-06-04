@@ -6,46 +6,23 @@ import (
 )
 
 const (
-	Debug = "D"
-	Info  = "I"
-	Warn  = "W"
-	Error = "E"
-)
-
-const (
-	reset   = "\033[0m"
-	red     = "\033[31m"
-	green   = "\033[32m"
-	yellow  = "\033[33m"
 	blue    = "\033[34m"
 	magenta = "\033[35m"
 	cyan    = "\033[36m"
 	white   = "\033[37m"
 )
 
-var Colours = []string{magenta, cyan, white, blue, red}
+var Colours = []string{blue, magenta, cyan, white}
 
-func Log(level string, format string, args ...any) {
-	var colour string
+func Info(format string, args ...any) {
+	fmt.Fprintf(os.Stdout, "\x1b[1m\033[32mINFO\033[0m %s\n", fmt.Sprintf(format, args...))
+}
 
-	switch level {
-	case Debug:
-		colour = blue
-	case Info:
-		colour = green
-	case Warn:
-		colour = yellow
-	case Error:
-		colour = red
-	default:
-		colour = reset
-	}
-
-	output := fmt.Sprintf(format, args...)
-	fmt.Fprintf(os.Stdout, "\x1b[1m%s%s.%s %s\n", colour, level, reset, output)
+func Warn(format string, args ...any) {
+	fmt.Fprintf(os.Stdout, "\x1b[1m\033[33mWARN\033[0m %s\n", fmt.Sprintf(format, args...))
 }
 
 func Abort(format string, args ...any) {
-	Log(Error, format, args...)
+	fmt.Fprintf(os.Stderr, "\x1b[1m\033[31mERROR\033[0m %s\n", fmt.Sprintf(format, args...))
 	os.Exit(1)
 }
