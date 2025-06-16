@@ -96,7 +96,7 @@ func readStdout(stdout <-chan string, consumerWg *sync.WaitGroup) {
 
 func Run(content config.Content) {
 	if !context.Match(content) {
-		log.Warn("no \x1b[1m%s\033[0m match for \x1b[1m%s\033[0m", content.Context, content.Target)
+		log.Warn("no match for \x1b[1m%s\033[0m", content.Name)
 		return
 	}
 
