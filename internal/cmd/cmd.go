@@ -33,17 +33,31 @@ func sharedRun(command string, fn func(out string)) {
 		log.Warn("failed to pipe stdout -> %v", err)
 	}
 
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Warn("failed to pipe stderr -> %v", err)
+	}
+
 	if err = cmd.Start(); err != nil {
 		log.Abort("starting command -> %v", err)
 	}
 
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		fn(scanner.Text())
+	stdoutScanner := bufio.NewScanner(stdout)
+	for stdoutScanner.Scan() {
+		fn(stdoutScanner.Text())
 	}
 
-	if err := scanner.Err(); err != nil {
+	if err := stdoutScanner.Err(); err != nil {
 		log.Warn("reading stdout -> %v", err)
+	}
+
+	stderrScanner := bufio.NewScanner(stderr)
+	for stderrScanner.Scan() {
+		fn(stderrScanner.Text())
+	}
+
+	if err := stderrScanner.Err(); err != nil {
+		log.Warn("reading stderr -> %v", err)
 	}
 
 	if err = cmd.Wait(); err != nil {
