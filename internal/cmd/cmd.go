@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"sync"
@@ -26,40 +27,44 @@ func asyncColour() string {
 	return colour
 }
 
+func sharedScanner(stream io.ReadCloser, fn func(out string), wg *sync.WaitGroup) {
+	defer wg.Done()
+	scanner := bufio.NewScanner(stream)
+
+	for scanner.Scan() {
+		fn(scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("reading stream: %v\n", err)
+	}
+}
+
 func sharedRun(command string, fn func(out string)) {
 	cmd := exec.Command("bash", "-c", command)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Warn("failed to pipe stdout -> %v", err)
+		log.Warn("piping stdout -> %v", err)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		log.Warn("failed to pipe stderr -> %v", err)
+		log.Warn("piping stderr -> %v", err)
 	}
 
 	if err = cmd.Start(); err != nil {
 		log.Abort("starting command -> %v", err)
 	}
 
-	stdoutScanner := bufio.NewScanner(stdout)
-	for stdoutScanner.Scan() {
-		fn(stdoutScanner.Text())
-	}
+	var wg sync.WaitGroup
 
-	if err := stdoutScanner.Err(); err != nil {
-		log.Warn("reading stdout -> %v", err)
-	}
+	wg.Add(1)
+	go sharedScanner(stdout, fn, &wg)
 
-	stderrScanner := bufio.NewScanner(stderr)
-	for stderrScanner.Scan() {
-		fn(stderrScanner.Text())
-	}
+	wg.Add(1)
+	go sharedScanner(stderr, fn, &wg)
 
-	if err := stderrScanner.Err(); err != nil {
-		log.Warn("reading stderr -> %v", err)
-	}
-
+	wg.Wait()
 	if err = cmd.Wait(); err != nil {
 		log.Abort("exited -> %v", err)
 	}

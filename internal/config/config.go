@@ -19,10 +19,10 @@ type Content struct {
 }
 
 func (c Content) Print() {
-	log.Info("Name\t\x1b[1m%s\033[0m", c.Name)
-	log.Info("Context\t\x1b[1m%s\033[0m", c.Context)
-	log.Info("Target\t\x1b[1m%s\033[0m", c.Target)
-	log.Info("Async\t\x1b[1m%v\033[0m", c.Async)
+	log.Info("Name    \x1b[1m%s\033[0m", c.Name)
+	log.Info("Context \x1b[1m%s\033[0m", c.Context)
+	log.Info("Target  \x1b[1m%s\033[0m", c.Target)
+	log.Info("Async   \x1b[1m%v\033[0m", c.Async)
 
 	fmt.Println()
 	for _, cmd := range c.Commands {
@@ -63,7 +63,7 @@ func (c Config) configExists() bool {
 func (c *Config) InitPath() {
 	user, err := user.Current()
 	if err != nil {
-		log.Abort("failed getting user -> %v", err)
+		log.Abort("getting user -> %v", err)
 	}
 
 	c.filePath = filepath.Join(user.HomeDir, ".envcmd/config.json")

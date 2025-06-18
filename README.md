@@ -21,7 +21,7 @@ cd envcmd
 go build -o ./bin/envcmd .
 ```
 
-3. Run the binary in-place or from your path:
+3. Run the binary in-place or add to your path:
 
 ```sh
 ./bin/envcmd
