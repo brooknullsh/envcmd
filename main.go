@@ -34,9 +34,8 @@ func main() {
 	case "help", "-h":
 		fmt.Println("Usage: envcmd COMMAND")
 		fmt.Println("\nCommand line tool for running per-environment commands.")
-		fmt.Println("\nOptions:")
-		fmt.Println("  --help, -h  Show this message and exit.")
 		fmt.Println("\nCommands:")
+		fmt.Println("  help,   -h  Show this message and exit.")
 		fmt.Println("  create, -c  Create configuration file.")
 		fmt.Println("  delete, -d  Delete configuration file.")
 		fmt.Println("  show,   -s  Show configuration file contents.")
