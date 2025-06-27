@@ -35,11 +35,13 @@ func directoryMatch(target string) bool {
 }
 
 func Match(content config.Content) bool {
-	if content.Context == "directory" {
+	switch content.Context {
+	case "directory":
 		return directoryMatch(content.Target)
-	} else if content.Context == "branch" {
+	case "branch":
 		return branchMatch(content.Target)
+	default:
+		log.Warn("unknown context '%s' in %s", content.Context, content.Name)
+		return false
 	}
-
-	return false
 }

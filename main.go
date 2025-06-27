@@ -38,7 +38,7 @@ func main() {
 		fmt.Println("  help,   -h  Show this message and exit.")
 		fmt.Println("  create, -c  Create configuration file.")
 		fmt.Println("  delete, -d  Delete configuration file.")
-		fmt.Println("  show,   -s  Show configuration file contents.")
+		fmt.Println("  list,   -l  Show configuration file contents.")
 	default:
 		log.Warn("unknown command -> %s", args[0])
 	}
