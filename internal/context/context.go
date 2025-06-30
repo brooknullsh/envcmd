@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/brooknullsh/envcmd/internal/config"
@@ -35,13 +36,27 @@ func directoryMatch(target string) bool {
 }
 
 func Match(content config.Content) bool {
+	var matched bool
+
 	switch content.Context {
 	case "directory":
-		return directoryMatch(content.Target)
+		matched = slices.ContainsFunc(content.Targets, func(target string) bool {
+			return directoryMatch(target)
+		})
 	case "branch":
-		return branchMatch(content.Target)
+		matched = slices.ContainsFunc(content.Targets, func(target string) bool {
+			return branchMatch(target)
+		})
+	case "both":
+		if len(content.Targets) != 2 {
+			log.Abort("the 'both' context should be 2 in length -> %s", content.Name)
+		}
+
+		matched = directoryMatch(content.Targets[0]) && branchMatch(content.Targets[1])
 	default:
 		log.Warn("unknown context '%s' in %s", content.Context, content.Name)
 		return false
 	}
+
+	return matched
 }

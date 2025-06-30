@@ -14,14 +14,14 @@ type Content struct {
 	Name     string   `json:"name"`
 	Async    bool     `json:"async"`
 	Context  string   `json:"context"`
-	Target   string   `json:"target"`
+	Targets  []string `json:"targets"`
 	Commands []string `json:"commands"`
 }
 
 func (c Content) Print() {
 	log.Info("Name     \x1b[1m%s\033[0m", c.Name)
 	log.Info("Context  \x1b[1m%s\033[0m", c.Context)
-	log.Info("Target   \x1b[1m%s\033[0m", c.Target)
+	log.Info("Targets  \x1b[1m%v\033[0m", c.Targets)
 	log.Info("Async    \x1b[1m%v\033[0m", c.Async)
 
 	fmt.Println()
@@ -90,7 +90,7 @@ func (c Config) Create() {
 			Name:     "foo",
 			Async:    true,
 			Context:  "directory",
-			Target:   "bar",
+			Targets:  []string{"bar"},
 			Commands: []string{"echo 'Hello, bar!'"},
 		},
 	}
