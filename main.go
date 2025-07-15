@@ -9,36 +9,37 @@ import (
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
+func start(cfg *config.Config) {
+	for _, obj := range cfg.Read() {
+		cmd.Run(obj)
+	}
+}
+
 func main() {
-	var config config.Config
-	config.InitPath()
+	var cfg config.Config
+	cfg.Init()
 
 	args := os.Args[1:]
 	if len(args) == 0 {
-		for _, content := range config.Read() {
-			cmd.Run(content)
-		}
+		start(&cfg)
 		return
 	}
 
 	switch args[0] {
 	case "create", "-c":
-		config.Create()
+		cfg.Create()
 	case "delete", "-d":
-		config.Delete()
+		cfg.Delete()
 	case "list", "-l":
-		for _, content := range config.Read() {
-			content.Print()
-			fmt.Println("---")
-		}
+		cfg.List()
 	case "help", "-h":
-		fmt.Println("Usage: envcmd COMMAND")
+		fmt.Println("Usage: envcmd [COMMAND]")
 		fmt.Println("\nCommand line tool for running per-environment commands.")
 		fmt.Println("\nCommands:")
-		fmt.Println("  help,   -h  Show this message and exit.")
 		fmt.Println("  create, -c  Create configuration file.")
 		fmt.Println("  delete, -d  Delete configuration file.")
 		fmt.Println("  list,   -l  Show configuration file contents.")
+		fmt.Println("  help,   -h  Show this message.")
 	default:
 		log.Warn("unknown command -> %s", args[0])
 	}

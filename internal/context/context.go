@@ -35,26 +35,26 @@ func directoryMatch(target string) bool {
 	return filepath.Base(dirPath) == target
 }
 
-func Match(content config.Content) bool {
+func Match(obj config.Schema) bool {
 	var matched bool
 
-	switch content.Context {
+	switch obj.Context {
 	case "directory":
-		matched = slices.ContainsFunc(content.Targets, func(target string) bool {
+		matched = slices.ContainsFunc(obj.Targets, func(target string) bool {
 			return directoryMatch(target)
 		})
 	case "branch":
-		matched = slices.ContainsFunc(content.Targets, func(target string) bool {
+		matched = slices.ContainsFunc(obj.Targets, func(target string) bool {
 			return branchMatch(target)
 		})
 	case "both":
-		if len(content.Targets) != 2 {
-			log.Abort("the 'both' context should be 2 in length -> %s", content.Name)
+		if len(obj.Targets) != 2 {
+			log.Abort("the 'both' context should be 2 in length -> %s", obj.Name)
 		}
 
-		matched = directoryMatch(content.Targets[0]) && branchMatch(content.Targets[1])
+		matched = directoryMatch(obj.Targets[0]) && branchMatch(obj.Targets[1])
 	default:
-		log.Warn("unknown context '%s' in %s", content.Context, content.Name)
+		log.Warn("unknown context '%s' in %s", obj.Context, obj.Name)
 		return false
 	}
 

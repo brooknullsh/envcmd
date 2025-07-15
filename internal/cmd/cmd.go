@@ -70,12 +70,12 @@ func sharedRun(command string, fn func(out string)) {
 	}
 }
 
-func syncRun(content config.Content) {
+func syncRun(obj config.Schema) {
 	fn := func(out string) {
 		fmt.Fprintf(os.Stdout, "%s\n", out)
 	}
 
-	for _, cmd := range content.Commands {
+	for _, cmd := range obj.Commands {
 		sharedRun(cmd, fn)
 	}
 }
@@ -99,16 +99,15 @@ func readStdout(stdout <-chan string, consumerWg *sync.WaitGroup) {
 	}
 }
 
-func Run(content config.Content) {
-	if !context.Match(content) {
-		log.Warn("no match for \x1b[1m%s\033[0m", content.Name)
+func Run(obj config.Schema) {
+	if !context.Match(obj) {
 		return
 	}
 
-	log.Info("matched with \x1b[1m%s\033[0m", content.Name)
+	log.Info("matched with \x1b[1m%s\033[0m", obj.Name)
 
-	if !content.Async {
-		syncRun(content)
+	if !obj.Async {
+		syncRun(obj)
 		return
 	}
 
@@ -119,7 +118,7 @@ func Run(content config.Content) {
 	consumerWg.Add(1)
 	go readStdout(stdout, &consumerWg)
 
-	for _, cmd := range content.Commands {
+	for _, cmd := range obj.Commands {
 		producerWg.Add(1)
 		go asyncRun(cmd, stdout, &producerWg)
 	}

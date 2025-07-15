@@ -1,54 +1,23 @@
 package config
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	"github.com/brooknullsh/envcmd/internal/log"
 )
 
-type Content struct {
+type Schema struct {
 	Name     string   `json:"name"`
 	Async    bool     `json:"async"`
 	Context  string   `json:"context"`
 	Targets  []string `json:"targets"`
 	Commands []string `json:"commands"`
-}
-
-func (c Content) Print() {
-	log.Info("Name     \x1b[1m%s\033[0m", c.Name)
-	log.Info("Context  \x1b[1m%s\033[0m", c.Context)
-	log.Info("Targets  \x1b[1m%v\033[0m", c.Targets)
-	log.Info("Async    \x1b[1m%v\033[0m", c.Async)
-
-	fmt.Println()
-	for _, cmd := range c.Commands {
-		log.Info("\x1b[1m%s\033[0m", cmd)
-	}
-}
-
-func readContent(file *os.File) []Content {
-	var contents []Content
-
-	if err := json.NewDecoder(file).Decode(&contents); err != nil {
-		log.Abort("decoding JSON -> %v", err)
-	}
-
-	return contents
-}
-
-func writeToFile(contents []Content, file *os.File) {
-	json, err := json.MarshalIndent(contents, "", "  ")
-	if err != nil {
-		log.Abort("encoding JSON -> %v", err)
-	}
-
-	if _, err = file.Write(json); err != nil {
-		log.Abort("writing -> %v", err)
-	}
 }
 
 type Config struct {
@@ -60,13 +29,33 @@ func (c Config) configExists() bool {
 	return err == nil
 }
 
-func (c *Config) InitPath() {
+func (c *Config) Init() {
 	user, err := user.Current()
 	if err != nil {
 		log.Abort("getting user -> %v", err)
 	}
 
 	c.filePath = filepath.Join(user.HomeDir, ".envcmd/config.json")
+}
+
+func (c Config) Read() []Schema {
+	if !c.configExists() {
+		log.Abort("no config found")
+	}
+
+	file, err := os.Open(c.filePath)
+	if err != nil {
+		log.Abort("opening file -> %s: %v", c.filePath, err)
+	}
+
+	defer file.Close()
+
+	var contents []Schema
+	if err := json.NewDecoder(file).Decode(&contents); err != nil {
+		log.Abort("decoding JSON -> %v", err)
+	}
+
+	return contents
 }
 
 func (c Config) Create() {
@@ -85,7 +74,7 @@ func (c Config) Create() {
 	}
 
 	defer file.Close()
-	content := []Content{
+	contents := []Schema{
 		{
 			Name:     "foo",
 			Async:    true,
@@ -95,13 +84,28 @@ func (c Config) Create() {
 		},
 	}
 
-	writeToFile(content, file)
+	json, err := json.MarshalIndent(contents, "", "  ")
+	if err != nil {
+		log.Abort("encoding JSON -> %v", err)
+	}
+
+	if _, err = file.Write(json); err != nil {
+		log.Abort("writing -> %v", err)
+	}
+
 	log.Info("created -> %s", c.filePath)
 }
 
 func (c Config) Delete() {
 	if !c.configExists() {
 		log.Abort("no config found")
+	}
+
+	log.Warn("delete -> %s (y/N)", c.filePath)
+	res, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+
+	if strings.TrimSpace(res) != "y" {
+		return
 	}
 
 	if err := os.Remove(c.filePath); err != nil {
@@ -116,16 +120,22 @@ func (c Config) Delete() {
 	log.Info("deleted -> %s", c.filePath)
 }
 
-func (c Config) Read() []Content {
+func (c Config) List() {
 	if !c.configExists() {
 		log.Abort("no config found")
 	}
 
-	file, err := os.Open(c.filePath)
-	if err != nil {
-		log.Abort("opening file -> %s: %v", c.filePath, err)
-	}
+	for _, obj := range c.Read() {
+		fmt.Println()
 
-	defer file.Close()
-	return readContent(file)
+		log.Info("Name     \x1b[1m%s\033[0m", obj.Name)
+		log.Info("Context  \x1b[1m%s\033[0m", obj.Context)
+		log.Info("Targets  \x1b[1m%v\033[0m", obj.Targets)
+		log.Info("Async    \x1b[1m%v\033[0m", obj.Async)
+
+		fmt.Println()
+		for _, cmd := range obj.Commands {
+			fmt.Printf(">> \x1b[1m%s\033[0m\n", cmd)
+		}
+	}
 }
