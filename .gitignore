@@ -1,2 +1,8 @@
+# Editor configuration
 .zed/
+
+# Compilation output
 target/
+
+# Local pipeline dry-run output
+dist/

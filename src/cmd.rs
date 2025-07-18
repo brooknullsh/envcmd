@@ -11,8 +11,6 @@ use crate::{
   log,
 };
 
-const COLOURS: [&str; 4] = ["\x1b[34m", "\x1b[35m", "\x1b[36m", "\x1b[37m"];
-
 pub fn run() -> anyhow::Result<()> {
   let path = config::absolute_config_path();
   if !path.exists() {
@@ -111,8 +109,10 @@ fn execute_command(cmd: &str, idx: usize) {
 }
 
 fn print_stream(stream: impl io::Read, idx: usize) {
-  let colour_index = (idx + 1) % COLOURS.len();
-  let colour = COLOURS[colour_index];
+  let colours: [&str; 4] = ["\x1b[34m", "\x1b[35m", "\x1b[36m", "\x1b[37m"];
+
+  let colour_index = (idx + 1) % colours.len();
+  let colour = colours[colour_index];
 
   for line in BufReader::new(stream).lines() {
     let Ok(line) = line else {
