@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Zig (for cargo-zigbuild)
-        uses: mlugg/setup-zig@v1
+        uses: mlugg/setup-zig@v2
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
