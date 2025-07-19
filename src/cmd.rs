@@ -2,8 +2,10 @@ use std::{
   env::{self},
   io::{self, BufRead, BufReader},
   process::{Command, Stdio},
-  thread::{self, JoinHandle},
+  thread::{self},
 };
+
+use anyhow::Context;
 
 use crate::{
   abort,
@@ -18,15 +20,25 @@ pub fn run() -> anyhow::Result<()> {
   }
 
   let mut handles = Vec::new();
+  let cfg = config::read_config_objects(&path)?
+    .into_iter()
+    .find(|c| match c.kind {
+      Kind::Directory if dir_match(&c.target) => true,
+      Kind::Branch if branch_match(&c.target) => true,
+      _ => false,
+    })
+    .context("no match found")?;
 
-  for cfg in config::read_config_objects(&path)? {
-    match cfg.kind {
-      Kind::Directory if no_match_for_dir(&cfg.target) => continue,
-      Kind::Branch if no_match_for_branch(&cfg.target) => continue,
-      _ => log!(INFO, "\x1b[1m{}\x1b[0m ({})", cfg.target, cfg.kind),
+  log!(INFO, "\x1b[1m{}\x1b[0m ({})", cfg.target, cfg.kind);
+
+  for (idx, cmd) in cfg.commands.into_iter().enumerate() {
+    if cfg.asynchronous {
+      let handle = thread::spawn(move || execute_command(&cmd, idx));
+      handles.push(handle);
+      continue;
     }
 
-    process_matched_commands(cfg.commands, cfg.asynchronous, &mut handles);
+    execute_command(&cmd, idx);
   }
 
   for handle in handles {
@@ -36,15 +48,15 @@ pub fn run() -> anyhow::Result<()> {
   Ok(())
 }
 
-fn no_match_for_dir(target: &str) -> bool {
+fn dir_match(target: &str) -> bool {
   let dir_path = env::current_dir()
     .inspect_err(|e| log!(ERROR, "reading current directory: {e}"))
     .unwrap();
 
-  dir_path.file_name().is_some_and(|n| n != target)
+  dir_path.file_name().is_some_and(|n| n == target)
 }
 
-fn no_match_for_branch(target: &str) -> bool {
+fn branch_match(target: &str) -> bool {
   let command = Command::new("git")
     .arg("rev-parse")
     .arg("--abbrev-ref")
@@ -60,7 +72,7 @@ fn no_match_for_branch(target: &str) -> bool {
     .unwrap();
 
   if output.status.success() {
-    return String::from_utf8(output.stdout).is_ok_and(|b| b.trim() != target);
+    return String::from_utf8(output.stdout).is_ok_and(|b| b.trim() == target);
   }
 
   if output.status.code() == Some(128) {
@@ -69,23 +81,7 @@ fn no_match_for_branch(target: &str) -> bool {
     log!(WARN, "failed to read git branch");
   }
 
-  true
-}
-
-fn process_matched_commands(
-  commands: Vec<String>,
-  is_async: bool,
-  handles: &mut Vec<JoinHandle<()>>,
-) {
-  for (idx, cmd) in commands.into_iter().enumerate() {
-    if is_async {
-      let handle = thread::spawn(move || execute_command(&cmd, idx));
-      handles.push(handle);
-      continue;
-    }
-
-    execute_command(&cmd, idx);
-  }
+  false
 }
 
 fn execute_command(cmd: &str, idx: usize) {
