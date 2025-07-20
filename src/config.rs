@@ -65,7 +65,7 @@ pub fn read_config_objects(path: &PathBuf) -> anyhow::Result<Vec<Config>> {
 pub fn create() -> anyhow::Result<()> {
   let path = absolute_config_path();
   if path.exists() {
-    abort!("{} already exists", path.display())
+    abort!("{} already exists", path.display());
   }
 
   let Some(parent_dir) = path.parent() else {
@@ -88,7 +88,7 @@ pub fn create() -> anyhow::Result<()> {
 pub fn delete() -> anyhow::Result<()> {
   let path = absolute_config_path();
   if !path.exists() {
-    abort!("{} not found", path.display())
+    abort!("{} not found", path.display());
   }
 
   let Some(parent_dir) = path.parent() else {
@@ -105,7 +105,7 @@ pub fn delete() -> anyhow::Result<()> {
 pub fn list() -> anyhow::Result<()> {
   let path = absolute_config_path();
   if !path.exists() {
-    abort!("{} not found", path.display())
+    abort!("{} not found", path.display());
   }
 
   for cfg in read_config_objects(&path)? {
@@ -117,7 +117,7 @@ pub fn list() -> anyhow::Result<()> {
       cfg.kind
     );
 
-    cfg.commands.iter().for_each(|c| log!(INFO, "{}", c));
+    cfg.commands.iter().for_each(|c| log!(INFO, "$ {}", c));
   }
 
   Ok(())

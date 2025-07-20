@@ -9,24 +9,20 @@ use anyhow::Context;
 
 use crate::{
   abort,
-  config::{self, Kind},
+  config::{self, Config, Kind},
   log,
 };
 
 pub fn run() -> anyhow::Result<()> {
   let path = config::absolute_config_path();
   if !path.exists() {
-    abort!("{} not found", path.display())
+    abort!("{} not found", path.display());
   }
 
   let mut handles = Vec::new();
   let cfg = config::read_config_objects(&path)?
     .into_iter()
-    .find(|c| match c.kind {
-      Kind::Directory if dir_match(&c.target) => true,
-      Kind::Branch if branch_match(&c.target) => true,
-      _ => false,
-    })
+    .find(cfg_match)
     .context("no match found")?;
 
   log!(INFO, "\x1b[1m{}\x1b[0m ({})", cfg.target, cfg.kind);
@@ -35,10 +31,9 @@ pub fn run() -> anyhow::Result<()> {
     if cfg.asynchronous {
       let handle = thread::spawn(move || execute_command(&cmd, idx));
       handles.push(handle);
-      continue;
+    } else {
+      execute_command(&cmd, idx);
     }
-
-    execute_command(&cmd, idx);
   }
 
   for handle in handles {
@@ -46,6 +41,11 @@ pub fn run() -> anyhow::Result<()> {
   }
 
   Ok(())
+}
+
+fn cfg_match(cfg: &Config) -> bool {
+  (cfg.kind == Kind::Directory && dir_match(&cfg.target))
+    || (cfg.kind == Kind::Branch && branch_match(&cfg.target))
 }
 
 fn dir_match(target: &str) -> bool {
