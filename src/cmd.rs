@@ -13,10 +13,12 @@ use crate::{
   log,
 };
 
-pub fn run() -> anyhow::Result<()> {
+pub fn run() -> anyhow::Result<()>
+{
   let path = config::absolute_config_path();
-  if !path.exists() {
-    abort!("{} not found", path.display());
+  if !path.exists()
+  {
+    abort!("{} not found", path.display())
   }
 
   let mut handles = Vec::new();
@@ -27,28 +29,34 @@ pub fn run() -> anyhow::Result<()> {
 
   log!(INFO, "\x1b[1m{}\x1b[0m ({})", cfg.target, cfg.kind);
 
-  for (idx, cmd) in cfg.commands.into_iter().enumerate() {
-    if cfg.asynchronous {
+  for (idx, cmd) in cfg.commands.into_iter().enumerate()
+  {
+    if cfg.asynchronous
+    {
       let handle = thread::spawn(move || execute_command(&cmd, idx));
       handles.push(handle);
-    } else {
-      execute_command(&cmd, idx);
+      continue
     }
+
+    execute_command(&cmd, idx)
   }
 
-  for handle in handles {
-    handle.join().unwrap();
+  for handle in handles
+  {
+    handle.join().unwrap()
   }
 
   Ok(())
 }
 
-fn cfg_match(cfg: &Config) -> bool {
+fn cfg_match(cfg: &Config) -> bool
+{
   (cfg.kind == Kind::Directory && dir_match(&cfg.target))
     || (cfg.kind == Kind::Branch && branch_match(&cfg.target))
 }
 
-fn dir_match(target: &str) -> bool {
+fn dir_match(target: &str) -> bool
+{
   let dir_path = env::current_dir()
     .inspect_err(|e| log!(ERROR, "reading current directory: {e}"))
     .unwrap();
@@ -56,7 +64,8 @@ fn dir_match(target: &str) -> bool {
   dir_path.file_name().is_some_and(|n| n == target)
 }
 
-fn branch_match(target: &str) -> bool {
+fn branch_match(target: &str) -> bool
+{
   let command = Command::new("git")
     .arg("rev-parse")
     .arg("--abbrev-ref")
@@ -71,20 +80,22 @@ fn branch_match(target: &str) -> bool {
     .inspect_err(|e| log!(ERROR, "waiting for git command: {e}"))
     .unwrap();
 
-  if output.status.success() {
-    return String::from_utf8(output.stdout).is_ok_and(|b| b.trim() == target);
+  if output.status.success()
+  {
+    return String::from_utf8(output.stdout).is_ok_and(|b| b.trim() == target)
   }
 
-  if output.status.code() == Some(128) {
-    log!(WARN, "no git in current directory");
-  } else {
-    log!(WARN, "failed to read git branch");
+  if output.status.code() == Some(128)
+  {
+    log!(WARN, "no git in current directory")
   }
 
+  log!(WARN, "failed to read git branch");
   false
 }
 
-fn execute_command(cmd: &str, idx: usize) {
+fn execute_command(cmd: &str, idx: usize)
+{
   let mut command = Command::new("bash")
     .arg("-c")
     .arg(cmd)
@@ -94,8 +105,10 @@ fn execute_command(cmd: &str, idx: usize) {
     .inspect_err(|e| log!(ERROR, "executing command: {e}"))
     .unwrap();
 
-  let (Some(stdout), Some(stderr)) = (command.stdout.take(), command.stderr.take()) else {
-    abort!("failed to take stdout and stderr");
+  let (Some(stdout), Some(stderr)) = (command.stdout.take(), command.stderr.take())
+  else
+  {
+    abort!("failed to take stdout and stderr")
   };
 
   thread::scope(|s| {
@@ -104,18 +117,22 @@ fn execute_command(cmd: &str, idx: usize) {
   });
 }
 
-fn print_stream(stream: impl io::Read, idx: usize) {
+fn print_stream(stream: impl io::Read, idx: usize)
+{
   let colours: [&str; 4] = ["\x1b[34m", "\x1b[35m", "\x1b[36m", "\x1b[37m"];
 
   let colour_index = (idx + 1) % colours.len();
   let colour = colours[colour_index];
 
-  for line in BufReader::new(stream).lines() {
-    let Ok(line) = line else {
+  for line in BufReader::new(stream).lines()
+  {
+    let Ok(line) = line
+    else
+    {
       log!(WARN, "failed to read line from stream");
-      continue;
+      continue
     };
 
-    println!("\x1b[1m{colour}{idx}\x1b[0m {line}");
+    println!("\x1b[1m{colour}{idx}\x1b[0m {line}")
   }
 }

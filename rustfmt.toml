@@ -1,1 +1,7 @@
 tab_spaces = 2
+reorder_impl_items = true
+trailing_semicolon = false
+spaces_around_ranges = true
+brace_style = "AlwaysNextLine"
+use_field_init_shorthand = true
+control_brace_style = "AlwaysNextLine"
