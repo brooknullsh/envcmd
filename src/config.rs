@@ -1,9 +1,9 @@
 use std::{
-  env::{self},
-  fmt::{self, Display},
-  fs::{self, File},
-  io::Write,
-  path::PathBuf,
+    env::{self},
+    fmt::{self, Display},
+    fs::{self, File},
+    io::Write,
+    path::PathBuf,
 };
 
 use anyhow::Context;
@@ -15,133 +15,133 @@ use crate::{abort, log};
 #[serde(rename_all = "lowercase")]
 pub enum Kind
 {
-  Directory,
-  Branch,
+    Directory,
+    Branch,
 }
 
 impl Display for Kind
 {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
-  {
-    match self
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
-      Kind::Directory => write!(f, "directory"),
-      Kind::Branch => write!(f, "branch"),
+        match self
+        {
+            Kind::Directory => write!(f, "directory"),
+            Kind::Branch => write!(f, "branch"),
+        }
     }
-  }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Config
 {
-  #[serde(rename = "async")]
-  pub asynchronous: bool,
-  pub kind: Kind,
-  pub target: String,
-  pub commands: Vec<String>,
+    #[serde(rename = "async")]
+    pub asynchronous: bool,
+    pub kind: Kind,
+    pub target: String,
+    pub commands: Vec<String>,
 }
 
 impl Default for Config
 {
-  fn default() -> Self
-  {
-    Self {
-      asynchronous: false,
-      kind: Kind::Directory,
-      target: String::from("foo"),
-      commands: Vec::from(["echo 'bar'".into()]),
+    fn default() -> Self
+    {
+        Self {
+            asynchronous: false,
+            kind: Kind::Directory,
+            target: String::from("foo"),
+            commands: Vec::from(["echo 'bar'".into()]),
+        }
     }
-  }
 }
 
 pub fn absolute_config_path() -> PathBuf
 {
-  let Some(path) = env::home_dir().map(|p| p.join(".envcmd/config.json"))
-  else
-  {
-    abort!("failed to find the home directory")
-  };
+    let Some(path) = env::home_dir().map(|path| path.join(".envcmd/config.json"))
+    else
+    {
+        abort!("failed to find the home directory");
+    };
 
-  path
+    path
 }
 
 pub fn read_config_objects(path: &PathBuf) -> anyhow::Result<Vec<Config>>
 {
-  let cfg = fs::read_to_string(path).context("opening configuration")?;
-  let cfg: Vec<Config> = serde_json::from_str(&cfg).context("deserialising configuration")?;
+    let cfg = fs::read_to_string(path).context("opening configuration")?;
+    let cfg: Vec<Config> = serde_json::from_str(&cfg).context("deserialising configuration")?;
 
-  Ok(cfg)
+    Ok(cfg)
 }
 
 pub fn create() -> anyhow::Result<()>
 {
-  let path = absolute_config_path();
-  if path.exists()
-  {
-    abort!("{} already exists", path.display())
-  }
+    let path = absolute_config_path();
+    if path.exists()
+    {
+        abort!("{} already exists", path.display());
+    }
 
-  let Some(parent_dir) = path.parent()
-  else
-  {
-    abort!("failed to retrieve parent of {}", path.display())
-  };
+    let Some(parent_dir) = path.parent()
+    else
+    {
+        abort!("failed to retrieve parent of {}", path.display());
+    };
 
-  fs::create_dir_all(parent_dir).context("creating configuration folder")?;
+    fs::create_dir_all(parent_dir).context("creating configuration folder")?;
 
-  let cfg = Vec::from([Config::default()]);
-  let cfg = serde_json::to_string_pretty(&cfg).context("serialising default configuration")?;
+    let cfg = Vec::from([Config::default()]);
+    let cfg = serde_json::to_string_pretty(&cfg).context("serialising default configuration")?;
 
-  File::create(&path)
-    .and_then(|mut f| f.write_all(cfg.as_bytes()))
-    .context("writing default config")?;
+    File::create(&path)
+        .and_then(|mut file| file.write_all(cfg.as_bytes()))
+        .context("writing default config")?;
 
-  log!(INFO, "created {}", path.display());
-  Ok(())
+    log!(INFO, "created {}", path.display());
+    Ok(())
 }
 
 pub fn delete() -> anyhow::Result<()>
 {
-  let path = absolute_config_path();
-  if !path.exists()
-  {
-    abort!("{} not found", path.display())
-  }
+    let path = absolute_config_path();
+    if !path.exists()
+    {
+        abort!("{} not found", path.display());
+    }
 
-  let Some(parent_dir) = path.parent()
-  else
-  {
-    abort!("failed to retrieve parent of {}", path.display());
-  };
+    let Some(parent_dir) = path.parent()
+    else
+    {
+        abort!("failed to retrieve parent of {}", path.display());
+    };
 
-  fs::remove_file(&path).context("removing configuration file")?;
-  fs::remove_dir(parent_dir).context("removing configuration folder")?;
+    fs::remove_file(&path).context("removing configuration file")?;
+    fs::remove_dir(parent_dir).context("removing configuration folder")?;
 
-  log!(INFO, "deleted {}", path.display());
-  Ok(())
+    log!(INFO, "deleted {}", path.display());
+    Ok(())
 }
 
 pub fn list() -> anyhow::Result<()>
 {
-  let path = absolute_config_path();
-  if !path.exists()
-  {
-    abort!("{} not found", path.display())
-  }
+    let path = absolute_config_path();
+    if !path.exists()
+    {
+        abort!("{} not found", path.display());
+    }
 
-  for cfg in read_config_objects(&path)?
-  {
-    let status = if cfg.asynchronous { "async" } else { "sync" };
+    for cfg in read_config_objects(&path)?
+    {
+        let status = if cfg.asynchronous { "async" } else { "sync" };
 
-    log!(
-      INFO,
-      "\x1b[1m{}\x1b[0m ({}) ({status})",
-      cfg.target,
-      cfg.kind
-    );
+        log!(
+            INFO,
+            "\x1b[1m{}\x1b[0m ({}) ({status})",
+            cfg.target,
+            cfg.kind
+        );
 
-    cfg.commands.iter().for_each(|c| log!(INFO, "$ {}", c))
-  }
+        cfg.commands.iter().for_each(|cmd| log!(INFO, "$ {}", cmd));
+    }
 
-  Ok(())
+    Ok(())
 }

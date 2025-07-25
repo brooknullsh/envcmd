@@ -1,4 +1,3 @@
-tab_spaces = 2
 reorder_impl_items = true
 trailing_semicolon = false
 spaces_around_ranges = true
