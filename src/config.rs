@@ -1,5 +1,4 @@
 use std::{
-    env::{self},
     fmt::{self, Display},
     fs::{self, File},
     io::Write,
@@ -54,18 +53,7 @@ impl Default for Config
     }
 }
 
-pub fn absolute_config_path() -> PathBuf
-{
-    let Some(path) = env::home_dir().map(|path| path.join(".envcmd/config.json"))
-    else
-    {
-        abort!("failed to find the home directory");
-    };
-
-    path
-}
-
-pub fn read_config_objects(path: &PathBuf) -> anyhow::Result<Vec<Config>>
+pub fn read_config_objects(path: PathBuf) -> anyhow::Result<Vec<Config>>
 {
     let cfg = fs::read_to_string(path).context("opening configuration")?;
     let cfg: Vec<Config> = serde_json::from_str(&cfg).context("deserialising configuration")?;
@@ -73,14 +61,8 @@ pub fn read_config_objects(path: &PathBuf) -> anyhow::Result<Vec<Config>>
     Ok(cfg)
 }
 
-pub fn create() -> anyhow::Result<()>
+pub fn create(path: PathBuf) -> anyhow::Result<()>
 {
-    let path = absolute_config_path();
-    if path.exists()
-    {
-        abort!("{} already exists", path.display());
-    }
-
     let Some(parent_dir) = path.parent()
     else
     {
@@ -100,14 +82,8 @@ pub fn create() -> anyhow::Result<()>
     Ok(())
 }
 
-pub fn delete() -> anyhow::Result<()>
+pub fn delete(path: PathBuf) -> anyhow::Result<()>
 {
-    let path = absolute_config_path();
-    if !path.exists()
-    {
-        abort!("{} not found", path.display());
-    }
-
     let Some(parent_dir) = path.parent()
     else
     {
@@ -121,15 +97,9 @@ pub fn delete() -> anyhow::Result<()>
     Ok(())
 }
 
-pub fn list() -> anyhow::Result<()>
+pub fn list(path: PathBuf) -> anyhow::Result<()>
 {
-    let path = absolute_config_path();
-    if !path.exists()
-    {
-        abort!("{} not found", path.display());
-    }
-
-    for cfg in read_config_objects(&path)?
+    for cfg in read_config_objects(path)?
     {
         let status = if cfg.asynchronous { "async" } else { "sync" };
 

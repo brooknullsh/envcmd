@@ -1,6 +1,7 @@
 use std::{
     env::{self},
     io::{self, BufRead, BufReader},
+    path::PathBuf,
     process::{Command, Stdio},
     thread::{self},
 };
@@ -13,16 +14,10 @@ use crate::{
     log,
 };
 
-pub fn run() -> anyhow::Result<()>
+pub fn run(path: PathBuf) -> anyhow::Result<()>
 {
-    let path = config::absolute_config_path();
-    if !path.exists()
-    {
-        abort!("{} not found", path.display());
-    }
-
     let mut handles = Vec::new();
-    let cfg = config::read_config_objects(&path)?
+    let cfg = config::read_config_objects(path)?
         .into_iter()
         .find(cfg_match)
         .context("no match found")?;
@@ -84,8 +79,7 @@ fn branch_match(target: &str) -> bool
     {
         return String::from_utf8(output.stdout).is_ok_and(|branch| branch.trim() == target);
     }
-
-    if output.status.code() == Some(128)
+    else if output.status.code() == Some(128)
     {
         log!(WARN, "no git in current directory");
     }
