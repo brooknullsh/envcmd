@@ -8,19 +8,19 @@ use std::{
 
 use crate::{
   abort,
-  config::{self, Kind},
+  config::{self, Config, Kind},
   log,
 };
 
 pub fn run(path: PathBuf) -> anyhow::Result<()> {
   let objects = config::read_config_objects(path)?;
-  let objects = objects.into_iter().filter(|cfg| {
-    (cfg.kind == Kind::Directory && dir_match(&cfg.target))
-      || (cfg.kind == Kind::Branch && branch_match(&cfg.target))
-  });
-
   let mut handles = Vec::new();
+
   for cfg in objects {
+    if no_match(&cfg) {
+      continue;
+    }
+
     log!(INFO, "\x1b[1m{}\x1b[0m ({})", cfg.target, cfg.kind);
 
     for (idx, cmd) in cfg.commands.into_iter().enumerate() {
@@ -38,6 +38,11 @@ pub fn run(path: PathBuf) -> anyhow::Result<()> {
   }
 
   Ok(())
+}
+
+fn no_match(cfg: &Config) -> bool {
+  (cfg.kind == Kind::Directory && !dir_match(&cfg.target))
+    || (cfg.kind == Kind::Branch && !branch_match(&cfg.target))
 }
 
 fn dir_match(target: &str) -> bool {
