@@ -12,18 +12,14 @@ use crate::{abort, log};
 
 #[derive(Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum Kind
-{
+pub enum Kind {
   Directory,
   Branch,
 }
 
-impl Display for Kind
-{
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
-  {
-    match self
-    {
+impl Display for Kind {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
       Kind::Directory => write!(f, "directory"),
       Kind::Branch => write!(f, "branch"),
     }
@@ -31,8 +27,7 @@ impl Display for Kind
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Config
-{
+pub struct Config {
   #[serde(rename = "async")]
   pub asynchronous: bool,
   pub kind: Kind,
@@ -40,10 +35,8 @@ pub struct Config
   pub commands: Vec<String>,
 }
 
-impl Default for Config
-{
-  fn default() -> Self
-  {
+impl Default for Config {
+  fn default() -> Self {
     Self {
       asynchronous: false,
       kind: Kind::Directory,
@@ -53,16 +46,14 @@ impl Default for Config
   }
 }
 
-pub fn read_config_objects(path: PathBuf) -> anyhow::Result<Vec<Config>>
-{
+pub fn read_config_objects(path: PathBuf) -> anyhow::Result<Vec<Config>> {
   let cfg = fs::read_to_string(path).context("opening configuration")?;
   let cfg: Vec<Config> = serde_json::from_str(&cfg).context("deserialising configuration")?;
 
   Ok(cfg)
 }
 
-pub fn create(path: PathBuf) -> anyhow::Result<()>
-{
+pub fn create(path: PathBuf) -> anyhow::Result<()> {
   let cfg_dir = extract_cfg_dir(&path);
   fs::create_dir_all(cfg_dir).context("creating configuration folder")?;
 
@@ -77,8 +68,7 @@ pub fn create(path: PathBuf) -> anyhow::Result<()>
   Ok(())
 }
 
-pub fn delete(path: PathBuf) -> anyhow::Result<()>
-{
+pub fn delete(path: PathBuf) -> anyhow::Result<()> {
   let cfg_dir = extract_cfg_dir(&path);
 
   fs::remove_file(&path).context("removing configuration file")?;
@@ -88,17 +78,14 @@ pub fn delete(path: PathBuf) -> anyhow::Result<()>
   Ok(())
 }
 
-pub fn list(path: PathBuf) -> anyhow::Result<()>
-{
-  for cfg in read_config_objects(path)?
-  {
-    let status = if cfg.asynchronous { "async" } else { "sync" };
-
+pub fn list(path: PathBuf) -> anyhow::Result<()> {
+  for cfg in read_config_objects(path)? {
     log!(
       INFO,
-      "\x1b[1m{}\x1b[0m ({}) ({status})",
+      "\x1b[1m{}\x1b[0m ({}) ({})",
       cfg.target,
-      cfg.kind
+      cfg.kind,
+      if cfg.asynchronous { "async" } else { "sync" }
     );
 
     cfg.commands.iter().for_each(|cmd| log!(INFO, "$ {}", cmd));
@@ -107,11 +94,8 @@ pub fn list(path: PathBuf) -> anyhow::Result<()>
   Ok(())
 }
 
-fn extract_cfg_dir(path: &PathBuf) -> &Path
-{
-  let Some(parent_dir) = path.parent()
-  else
-  {
+fn extract_cfg_dir(path: &PathBuf) -> &Path {
+  let Some(parent_dir) = path.parent() else {
     abort!("failed to retrieve parent of {}", path.display());
   };
 
