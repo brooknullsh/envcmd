@@ -8,13 +8,13 @@ mod config;
 #[macro_export]
 macro_rules! log {
   (INFO, $($txt:tt)*) => {
-    println!("\x1b[1m\x1b[32mI\x1b[0m {}", format!($($txt)*))
+    println!("[\x1b[1m\x1b[32mI\x1b[0m] {}", format!($($txt)*))
   };
   (WARN, $($txt:tt)*) => {
-    println!("\x1b[1m\x1b[33mW\x1b[0m {}", format!($($txt)*))
+    println!("[\x1b[1m\x1b[33mW\x1b[0m] {}", format!($($txt)*))
   };
   (ERROR, $($txt:tt)*) => {
-    eprintln!("\x1b[1m\x1b[31mE\x1b[0m {}", format!($($txt)*))
+    eprintln!("[\x1b[1m\x1b[31mE\x1b[0m] {}", format!($($txt)*))
   };
 }
 

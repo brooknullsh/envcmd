@@ -13,24 +13,22 @@ use crate::{
 };
 
 pub fn run(path: PathBuf) -> anyhow::Result<()> {
-  let objects = config::read_config_objects(path)?;
   let mut handles = Vec::new();
+  let objects = config::read_config_objects(path)?
+    .into_iter()
+    .filter(is_matching_object);
 
   for cfg in objects {
-    if no_match(&cfg) {
-      continue;
-    }
-
     log!(INFO, "\x1b[1m{}\x1b[0m ({})", cfg.target, cfg.kind);
 
-    for (idx, cmd) in cfg.commands.into_iter().enumerate() {
+    cfg.commands.into_iter().enumerate().for_each(|(idx, cmd)| {
       if cfg.asynchronous {
         let handle = thread::spawn(move || execute_command(&cmd, idx));
         handles.push(handle);
       } else {
         execute_command(&cmd, idx);
       }
-    }
+    });
   }
 
   for handle in handles {
@@ -40,9 +38,9 @@ pub fn run(path: PathBuf) -> anyhow::Result<()> {
   Ok(())
 }
 
-fn no_match(cfg: &Config) -> bool {
-  (cfg.kind == Kind::Directory && !dir_match(&cfg.target))
-    || (cfg.kind == Kind::Branch && !branch_match(&cfg.target))
+fn is_matching_object(cfg: &Config) -> bool {
+  (cfg.kind == Kind::Directory && dir_match(&cfg.target))
+    || (cfg.kind == Kind::Branch && branch_match(&cfg.target))
 }
 
 fn dir_match(target: &str) -> bool {
@@ -110,6 +108,6 @@ fn print_stream(stream: impl io::Read, idx: usize) {
       continue;
     };
 
-    println!("\x1b[1m{colour}{idx}\x1b[0m {line}");
+    println!("[\x1b[1m{colour}{idx}\x1b[0m] {line}");
   }
 }
