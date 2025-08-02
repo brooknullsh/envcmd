@@ -29,22 +29,19 @@ func Run(cfg config.Config) {
   log.Info("\x1b[1m%s\x1b[0m (%s)", cfg.Target, cfg.Kind)
 
   for idx, cmd := range cfg.Commands {
-    if !cfg.Async {
-      sharedRun(cmd, idx)
-      continue
+    if cfg.Async {
+      wg.Add(1)
+      go sharedRun(&wg, cmd, idx)
+    } else {
+      sharedRun(&wg, cmd, idx)
     }
-
-    wg.Add(1)
-    go func() {
-      defer wg.Done()
-      sharedRun(cmd, idx)
-    }()
   }
 
   wg.Wait()
 }
 
-func sharedRun(cmd string, idx int) {
+func sharedRun(wg *sync.WaitGroup, cmd string, idx int) {
+  defer wg.Done()
   cmdHandle := exec.Command("bash", "-c", cmd)
 
   stdout, err := cmdHandle.StdoutPipe()
@@ -62,13 +59,13 @@ func sharedRun(cmd string, idx int) {
     log.Abort("starting command (%s): %v", cmd, err)
   }
 
-  var wg sync.WaitGroup
-  wg.Add(2)
+  var wgStream sync.WaitGroup
+  wgStream.Add(2)
 
-  go printStream(&wg, stdout, idx)
-  go printStream(&wg, stderr, idx)
+  go printStream(&wgStream, stdout, idx)
+  go printStream(&wgStream, stderr, idx)
 
-  wg.Wait()
+  wgStream.Wait()
 
   err = cmdHandle.Wait()
   if err != nil {
