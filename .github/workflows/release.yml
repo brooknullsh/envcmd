@@ -13,12 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      - name: Install Zig (for cargo-zigbuild)
-        uses: mlugg/setup-zig@v2
+      - name: Use Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.24.5
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

@@ -14,17 +14,17 @@ Build from source, install via Homebrew or see [Releases](https://github.com/bro
 git clone https://github.com/brooknullsh/envcmd.git
 ```
 
-2. Build the binary (requires [Rust](https://www.rust-lang.org/tools/install) to be installed):
+2. Build the binary (requires [Go](https://go.dev/doc/install) to be installed):
 
 ```sh
 cd envcmd
-cargo build -r
+go build -o ./bin/envcmd .
 ```
 
 3. Run the binary in-place or add to your path manually:
 
 ```sh
-./target/release/envcmd
+./bin/envcmd
 ```
 
 ### Homebrew

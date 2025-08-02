@@ -2,7 +2,7 @@
 .zed/
 
 # Compilation output
-target/
+bin/
 
-# Local pipeline dry-run output
+# Pipeline dry-run output
 dist/
