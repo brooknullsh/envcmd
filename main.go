@@ -9,14 +9,19 @@ import (
   "github.com/brooknullsh/envcmd/internal/log"
 )
 
+// build flag provided by goreleaser, using latest git tag
+// https://goreleaser.com/cookbooks/using-main.version/
+var version string
+
 func printUsage() {
   fmt.Println("Command line tool for running per-environment commands")
   fmt.Println("\nUsage: envcmd [COMMAND]")
   fmt.Println("\nCommands:")
-  fmt.Println("  create  c  Create configuration file.")
-  fmt.Println("  delete  d  Delete configuration file.")
-  fmt.Println("  list    l  Show configuration file contents.")
-  fmt.Println("  help    h  Show this message.")
+  fmt.Println("  create   c  Create configuration file.")
+  fmt.Println("  delete   d  Delete configuration file.")
+  fmt.Println("  list     l  Show configuration file contents.")
+  fmt.Println("  version  v  Show the version you're running.")
+  fmt.Println("  help     h  Show this message.")
 }
 
 func main() {
@@ -41,9 +46,11 @@ func main() {
     cfg.Delete()
   case "list", "l":
     cfg.List()
+  case "version", "v":
+    log.Info("envcmd %s", version)
   case "help", "h":
     printUsage()
   default:
-    log.Abort("unknown command: %s", args[0])
+    printUsage()
   }
 }
