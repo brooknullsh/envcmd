@@ -45,19 +45,19 @@ func Run(cfg config.Config) {
 }
 
 func sharedRun(cmd string, idx int) {
-  command := exec.Command("bash", "-c", cmd)
+  cmdHandle := exec.Command("bash", "-c", cmd)
 
-  stdout, err := command.StdoutPipe()
+  stdout, err := cmdHandle.StdoutPipe()
   if err != nil {
     log.Abort("getting stdout pipe: %v", err)
   }
 
-  stderr, err := command.StderrPipe()
+  stderr, err := cmdHandle.StderrPipe()
   if err != nil {
     log.Abort("getting stderr pipe: %v", err)
   }
 
-  err = command.Start()
+  err = cmdHandle.Start()
   if err != nil {
     log.Abort("starting command (%s): %v", cmd, err)
   }
@@ -70,7 +70,7 @@ func sharedRun(cmd string, idx int) {
 
   wg.Wait()
 
-  err = command.Wait()
+  err = cmdHandle.Wait()
   if err != nil {
     log.Abort("running (%s): %v", cmd, err)
   }
@@ -79,9 +79,10 @@ func sharedRun(cmd string, idx int) {
 func printStream(wg *sync.WaitGroup, stream io.Reader, idx int) {
   defer wg.Done()
 
+  // blue, magenta, cyan, white
   var colours = [4]string{"\033[34m", "\033[35m", "\033[36m", "\033[37m"}
-  colourIndex := (idx + 1) % len(colours)
-  colour := colours[colourIndex]
+  colourIdx := (idx + 1) % len(colours)
+  colour := colours[colourIdx]
 
   scanner := bufio.NewScanner(stream)
   for scanner.Scan() {

@@ -94,7 +94,7 @@ func (c Config) List() {
     log.Abort("no configuration found")
   }
 
-  for _, cfg := range c.Read() {
+  for idx, cfg := range c.Read() {
     var isAsync string
     if cfg.Async {
       isAsync = "async"
@@ -102,7 +102,7 @@ func (c Config) List() {
       isAsync = "sync"
     }
 
-    log.Info("\x1b[1m%s\033[0m (%s) (%s)", cfg.Target, cfg.Kind, isAsync)
+    log.Info("%d \x1b[1m%s\033[0m (%s) (%s)", idx, cfg.Target, cfg.Kind, isAsync)
     for _, cmd := range cfg.Commands {
       log.Info("$ %s", cmd)
     }
