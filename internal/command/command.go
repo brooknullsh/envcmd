@@ -2,6 +2,7 @@ package command
 
 import (
   "bufio"
+  "errors"
   "fmt"
   "io"
   "os/exec"
@@ -15,19 +16,11 @@ import (
 
 func Run(cfg config.Config) {
   var wg sync.WaitGroup
-
-  contents := cfg.Read()
-  matchIdx := slices.IndexFunc(contents, func(c config.Config) bool {
-    return kind.IsMatch(c.Kind, c.Target)
-  })
-
-  if matchIdx == -1 {
-    return
+  if err := findFirstMatch(&cfg); err != nil {
+    log.Abort("%v", err)
   }
 
-  cfg = contents[matchIdx]
   log.Info("\x1b[1m%s\x1b[0m (%s)", cfg.Target, cfg.Kind)
-
   for idx, cmd := range cfg.Commands {
     if cfg.Async {
       wg.Add(1)
@@ -38,6 +31,20 @@ func Run(cfg config.Config) {
   }
 
   wg.Wait()
+}
+
+func findFirstMatch(cfg *config.Config) error {
+  contents := cfg.Read()
+  matchIdx := slices.IndexFunc(contents, func(c config.Config) bool {
+    return kind.IsMatch(c.Kind, c.Target)
+  })
+
+  if matchIdx == -1 {
+    return errors.New("no match found")
+  }
+
+  *cfg = contents[matchIdx]
+  return nil
 }
 
 func sharedRun(wg *sync.WaitGroup, cmd string, idx int) {
@@ -54,8 +61,7 @@ func sharedRun(wg *sync.WaitGroup, cmd string, idx int) {
     log.Abort("getting stderr pipe: %v", err)
   }
 
-  err = cmdHandle.Start()
-  if err != nil {
+  if err := cmdHandle.Start(); err != nil {
     log.Abort("starting command (%s): %v", cmd, err)
   }
 
@@ -67,8 +73,7 @@ func sharedRun(wg *sync.WaitGroup, cmd string, idx int) {
 
   wgStream.Wait()
 
-  err = cmdHandle.Wait()
-  if err != nil {
+  if err := cmdHandle.Wait(); err != nil {
     log.Abort("running (%s): %v", cmd, err)
   }
 }

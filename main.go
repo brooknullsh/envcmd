@@ -6,7 +6,6 @@ import (
 
   "github.com/brooknullsh/envcmd/internal/command"
   "github.com/brooknullsh/envcmd/internal/config"
-  "github.com/brooknullsh/envcmd/internal/log"
 )
 
 // build flag provided by goreleaser, using latest git tag
@@ -47,7 +46,7 @@ func main() {
   case "list", "l":
     cfg.List()
   case "version", "v":
-    log.Info("envcmd %s", version)
+    fmt.Printf("envcmd (%s)\n", version)
   case "help", "h":
     printUsage()
   default:
