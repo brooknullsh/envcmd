@@ -33,6 +33,15 @@ func printVersion() {
   fmt.Printf("envcmd (v%s)\n", version)
 }
 
+func setupFlags() (*flag.FlagSet, *bool, *string, *string) {
+  flags := flag.NewFlagSet("add", flag.ExitOnError)
+
+  async := flags.Bool("a", false, "async")
+  kind := flags.String("k", "", "kind")
+  target := flags.String("t", "", "target")
+  return flags, async, kind, target
+}
+
 func main() {
   var cfg config.Config
   cfg.Init()
@@ -51,19 +60,18 @@ func main() {
   case "list", "l":
     cfg.List()
   case "add", "a":
-    flags := flag.NewFlagSet("add", flag.ExitOnError)
-
-    async := flags.Bool("a", false, "async")
-    kind := flags.String("k", "", "kind")
-    target := flags.String("t", "", "target")
-
-    excludedCommand := args[1:]
-    if err := flags.Parse(excludedCommand); err != nil {
+    flags, async, kind, target := setupFlags()
+    if err := flags.Parse(args[1:]); err != nil {
       printUsage()
       return
     }
 
     commands := flags.Args()
+    if *kind == "" || *target == "" || len(commands) == 0 {
+      printUsage()
+      return
+    }
+
     newCfg := config.Config{
       Async:    *async,
       Kind:     *kind,
