@@ -2,7 +2,6 @@ package command
 
 import (
   "bufio"
-  "errors"
   "fmt"
   "io"
   "os/exec"
@@ -16,9 +15,7 @@ import (
 
 func Run(cfg config.Config) {
   var wg sync.WaitGroup
-  if err := findFirstMatch(&cfg); err != nil {
-    log.Abort("%v", err)
-  }
+  findFirstMatch(&cfg)
 
   log.Info("\x1b[1m%s\x1b[0m (%s)", cfg.Target, cfg.Kind)
   for idx, cmd := range cfg.Commands {
@@ -33,18 +30,17 @@ func Run(cfg config.Config) {
   wg.Wait()
 }
 
-func findFirstMatch(cfg *config.Config) error {
+func findFirstMatch(cfg *config.Config) {
   contents := cfg.Read()
   matchIdx := slices.IndexFunc(contents, func(c config.Config) bool {
     return kind.IsMatch(c.Kind, c.Target)
   })
 
   if matchIdx == -1 {
-    return errors.New("no match found")
+    log.Abort("no match found")
   }
 
   *cfg = contents[matchIdx]
-  return nil
 }
 
 func sharedRun(wg *sync.WaitGroup, cmd string, idx int) {

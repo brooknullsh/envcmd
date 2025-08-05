@@ -10,7 +10,7 @@ import (
 )
 
 // build flag provided by goreleaser, using latest git tag
-// https://goreleaser.com/cookbooks/using-main.version/
+// https://goreleaser.com/cookbooks/using-main.version
 var version string
 
 func printUsage() {
