@@ -1,6 +1,7 @@
 package main
 
 import (
+  "flag"
   "fmt"
   "os"
 
@@ -19,8 +20,17 @@ func printUsage() {
   fmt.Println("  create   c  Create configuration file.")
   fmt.Println("  delete   d  Delete configuration file.")
   fmt.Println("  list     l  Show configuration file contents.")
+  fmt.Println("  add      a  Add new commands to run.")
+  fmt.Println("              -a async     bool")
+  fmt.Println("              -k kind      string")
+  fmt.Println("              -t target    string")
+  fmt.Println("              .. commands  string[]")
   fmt.Println("  version  v  Show the version you're running.")
   fmt.Println("  help     h  Show this message.")
+}
+
+func printVersion() {
+  fmt.Printf("envcmd (v%s)\n", version)
 }
 
 func main() {
@@ -33,11 +43,6 @@ func main() {
     return
   }
 
-  if len(args) > 1 {
-    printUsage()
-    return
-  }
-
   switch args[0] {
   case "create", "c":
     cfg.Create()
@@ -45,8 +50,30 @@ func main() {
     cfg.Delete()
   case "list", "l":
     cfg.List()
+  case "add", "a":
+    flags := flag.NewFlagSet("add", flag.ExitOnError)
+
+    async := flags.Bool("a", false, "async")
+    kind := flags.String("k", "", "kind")
+    target := flags.String("t", "", "target")
+
+    excludedCommand := args[1:]
+    if err := flags.Parse(excludedCommand); err != nil {
+      printUsage()
+      return
+    }
+
+    commands := flags.Args()
+    newCfg := config.Config{
+      Async:    *async,
+      Kind:     *kind,
+      Target:   *target,
+      Commands: commands,
+    }
+
+    cfg.Add(newCfg)
   case "version", "v":
-    fmt.Printf("envcmd (%s)\n", version)
+    printVersion()
   case "help", "h":
     printUsage()
   default:

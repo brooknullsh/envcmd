@@ -17,7 +17,7 @@ type Config struct {
   Target   string   `json:"target"`
   Commands []string `json:"commands"`
 
-  filePath string
+  path string
 }
 
 func (c *Config) Init() {
@@ -26,22 +26,22 @@ func (c *Config) Init() {
     log.Abort("finding user: %v", err)
   }
 
-  c.filePath = filepath.Join(user.HomeDir, ".envcmd/config.json")
+  c.path = filepath.Join(user.HomeDir, ".envcmd/config.json")
 }
 
 func (c Config) Create() {
   if c.exists() {
-    log.Abort("already exists: %s", c.filePath)
+    log.Abort("already exists: %s", c.path)
   }
 
-  dirPath := filepath.Dir(c.filePath)
+  dirPath := filepath.Dir(c.path)
   if err := os.Mkdir(dirPath, 0755); err != nil {
     log.Abort("creating directory (%s): %v", dirPath, err)
   }
 
-  file, err := os.Create(c.filePath)
+  file, err := os.Create(c.path)
   if err != nil {
-    log.Abort("creating file (%s): %v", c.filePath, err)
+    log.Abort("creating file (%s): %v", c.path, err)
   }
 
   defer file.Close()
@@ -54,16 +54,8 @@ func (c Config) Create() {
     },
   }
 
-  json, err := json.MarshalIndent(contents, "", "  ")
-  if err != nil {
-    log.Abort("encoding JSON: %v", err)
-  }
-
-  if _, err := file.Write(json); err != nil {
-    log.Abort("writing JSON: %v", err)
-  }
-
-  log.Info("created %s", c.filePath)
+  encodeAndWriteJSON(contents, c.path)
+  log.Info("created %s", c.path)
 }
 
 func (c Config) Delete() {
@@ -71,22 +63,22 @@ func (c Config) Delete() {
     log.Abort("no configuration found")
   }
 
-  log.Warn("delete (y/N): %s", c.filePath)
+  log.Warn("delete (y/N): %s", c.path)
   answer, err := bufio.NewReader(os.Stdin).ReadString('\n')
   if err != nil || strings.TrimSpace(answer) != "y" {
     return
   }
 
-  if err := os.Remove(c.filePath); err != nil {
-    log.Abort("removing file (%s): %v", c.filePath, err)
+  if err := os.Remove(c.path); err != nil {
+    log.Abort("removing file (%s): %v", c.path, err)
   }
 
-  dirPath := filepath.Dir(c.filePath)
+  dirPath := filepath.Dir(c.path)
   if err := os.Remove(dirPath); err != nil {
     log.Abort("removing directory (%s): %v", dirPath, err)
   }
 
-  log.Info("deleted %s", c.filePath)
+  log.Info("deleted %s", c.path)
 }
 
 func (c Config) List() {
@@ -95,14 +87,14 @@ func (c Config) List() {
   }
 
   for idx, cfg := range c.Read() {
-    var isAsync string
-    if cfg.Async {
-      isAsync = "async"
-    } else {
-      isAsync = "sync"
-    }
+    log.Info(
+      "%d \x1b[1m%s\033[0m (%s) (%s)",
+      idx,
+      cfg.Target,
+      cfg.Kind,
+      cfg.asyncToString(),
+    )
 
-    log.Info("%d \x1b[1m%s\033[0m (%s) (%s)", idx, cfg.Target, cfg.Kind, isAsync)
     for _, cmd := range cfg.Commands {
       log.Info("$ %s", cmd)
     }
@@ -114,9 +106,54 @@ func (c Config) Read() []Config {
     log.Abort("no configuration found")
   }
 
-  file, err := os.Open(c.filePath)
+  return configFromFile(c.path)
+}
+
+func (c Config) Add(newCfg Config) {
+  if !c.exists() {
+    log.Abort("no configuration found")
+  }
+
+  contents := configFromFile(c.path)
+  contents = append(contents, newCfg)
+
+  encodeAndWriteJSON(contents, c.path)
+  log.Info(
+    "added: \x1b[1m%s\033[0m (%s) (%v)",
+    newCfg.Target,
+    newCfg.Kind,
+    newCfg.asyncToString(),
+  )
+}
+
+func (c Config) exists() bool {
+  _, err := os.Stat(c.path)
+  return err == nil
+}
+
+func (c Config) asyncToString() string {
+  if c.Async {
+    return "async"
+  } else {
+    return "sync"
+  }
+}
+
+func encodeAndWriteJSON(contents []Config, path string) {
+  json, err := json.MarshalIndent(contents, "", "  ")
   if err != nil {
-    log.Abort("opening file (%s): %v", c.filePath, err)
+    log.Abort("encoding JSON: %v", err)
+  }
+
+  if err := os.WriteFile(path, json, 0644); err != nil {
+    log.Abort("writing JSON: %v", err)
+  }
+}
+
+func configFromFile(path string) []Config {
+  file, err := os.Open(path)
+  if err != nil {
+    log.Abort("opening file (%s): %v", path, err)
   }
 
   defer file.Close()
@@ -127,9 +164,4 @@ func (c Config) Read() []Config {
   }
 
   return contents
-}
-
-func (c Config) exists() bool {
-  _, err := os.Stat(c.filePath)
-  return err == nil
 }

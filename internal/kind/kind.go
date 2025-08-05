@@ -10,8 +10,15 @@ import (
 )
 
 func IsMatch(kind string, target string) bool {
-  return (kind == "directory" && directoryMatch(target)) ||
-    (kind == "branch" && branchMatch(target))
+  switch kind {
+  case "directory":
+    return directoryMatch(target)
+  case "branch":
+    return branchMatch(target)
+  default:
+    log.Warn("unknown kind (%s)", kind)
+    return false
+  }
 }
 
 func directoryMatch(target string) bool {
