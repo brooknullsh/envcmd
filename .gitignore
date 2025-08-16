@@ -1,8 +1,8 @@
-# Editor configuration
+# Editor configuration.
 .zed/
 
-# Compilation output
-bin/
+# Compilation output.
+target/
 
-# Pipeline dry-run output
+# Pipeline dry-run output.
 dist/
