@@ -7,7 +7,9 @@ use std::{
 
 use clap::{Parser, Subcommand};
 
+const SEPARATOR_KEY: &str = "ENVCMD_SEPARATOR";
 const DELIMITER_KEY: &str = "ENVCMD_DELIMITER";
+const DEFAULT_SEPARATOR: &str = "-";
 const DEFAULT_DELIMITER: &str = ",";
 
 #[macro_export]
@@ -51,14 +53,32 @@ struct Args {
   command: Option<Commands>,
 }
 
+/// Only find non-configuration or unrelated environment variables.
+fn include_env_vars(var: &(String, String)) -> bool {
+  let exclusions: [&str; 2] = [DELIMITER_KEY, SEPARATOR_KEY];
+  let key = var.0.as_str();
+
+  key.starts_with("ENVCMD") && !exclusions.contains(&key)
+}
+
 /// Normalise a string to a [`Kind`] enum. Since the input string is user-input,
-/// default to `None` for misspelt/wrong kind values.
+/// default to `None` for misspelt/wrong [`Kind`] values.
 fn normalise_kind(kind: &str) -> Option<Kind> {
   match kind {
     "DIR" => Some(Kind::Dir),
     "BRANCH" => Some(Kind::Branch),
     _ => None,
   }
+}
+
+/// Convert the split values of the target to lowercase & join them with the
+/// specified separator.
+fn normalise_target(target: &[&str], separator: &str) -> String {
+  target
+    .iter()
+    .map(|target| target.to_lowercase())
+    .collect::<Vec<String>>()
+    .join(separator)
 }
 
 /// Check each [`Kind`]'s target value.
@@ -109,8 +129,9 @@ fn branch_match(target: &str) -> bool {
   false
 }
 
-/// Iterate through every command from the environment variable value. Spawn a
-/// thread for each asynchronous command, block otherwise.
+/// Iterate through every command from the environment variable value split by
+/// the specified delimiter. Spawn a thread for each asynchronous command, block
+/// otherwise.
 ///
 /// NOTE: Synchronous commands will spawn two threads for the STDOUT and STDERR
 /// streams.
@@ -178,7 +199,8 @@ where
 
 fn main() {
   let delimiter = env::var(DELIMITER_KEY).unwrap_or(DEFAULT_DELIMITER.to_string());
-  let vars = env::vars().filter(|var| var.0.starts_with("ENVCMD") && var.0 != DELIMITER_KEY);
+  let separator = env::var(SEPARATOR_KEY).unwrap_or(DEFAULT_SEPARATOR.to_string());
+  let vars = env::vars().filter(include_env_vars);
 
   let args = Args::parse();
   if args.command.is_some() {
@@ -186,7 +208,6 @@ fn main() {
       log!(INFO, "\x1b[1m{}\x1b[0m", key);
       val.split(&delimiter).for_each(|cmd| log!(INFO, "$ {cmd}"));
     }
-
     return;
   }
 
@@ -194,21 +215,29 @@ fn main() {
     let chunks: Vec<&str> = key.split("_").collect();
     let asynchronous = chunks.last().is_some_and(|chunk| *chunk == "ASYNC");
 
-    if asynchronous && chunks.len() != 4 {
+    if asynchronous && chunks.len() < 4 {
       abort!("Invalid format of ENVCMD_<KIND>_<TARGET>_ASYNC: {key}");
-    } else if !asynchronous && chunks.len() != 3 {
+    } else if !asynchronous && chunks.len() < 3 {
       abort!("Invalid format of ENVCMD_<KIND>_<TARGET>: {key}");
     }
 
-    // Since we extract the target from a split iterator with an underscore
-    // delimiter, target values are limited e.g. directories with dashes in
-    // their name. TODO: Better way of parsing target values.
     let (kind, target) = (chunks[1], chunks[2]);
     let Some(kind) = normalise_kind(kind) else {
       abort!("Unrecognised <KIND>: {key}");
     };
 
-    let target = target.to_lowercase();
+    // Take all underscore-separated words after the kind until the asynchronous
+    // flag or the end to later join them with the set separator char(s). This
+    // is to handle targets that aren't simply one word in length, and where
+    // said target e.g. a directory name isn't separated by underscores.
+    let first_target = &[target];
+    let target = if asynchronous {
+      chunks.get(2..chunks.len() - 1).unwrap_or(first_target)
+    } else {
+      chunks.get(2..).unwrap_or(first_target)
+    };
+
+    let target = normalise_target(target, &separator);
     if kind_matches_target(kind, &target) {
       run_commands(&val, &delimiter, asynchronous);
     }
