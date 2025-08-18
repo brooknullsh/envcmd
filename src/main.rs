@@ -15,13 +15,13 @@ const DEFAULT_DELIMITER: &str = ",";
 #[macro_export]
 macro_rules! log {
   (INFO, $($txt:tt)*) => {
-    println!("\x1b[1m\x1b[32mI\x1b[0m {}", format!($($txt)*))
+    println!("[\x1b[1m\x1b[32mI\x1b[0m] {}", format!($($txt)*))
   };
   (WARN, $($txt:tt)*) => {
-    println!("\x1b[1m\x1b[33mW\x1b[0m {}", format!($($txt)*))
+    println!("[\x1b[1m\x1b[33mW\x1b[0m] {}", format!($($txt)*))
   };
   (ERROR, $($txt:tt)*) => {
-    eprintln!("\x1b[1m\x1b[31mE\x1b[0m {}", format!($($txt)*))
+    eprintln!("[\x1b[1m\x1b[31mE\x1b[0m] {}", format!($($txt)*))
   };
 }
 
@@ -53,7 +53,7 @@ struct Args {
   command: Option<Commands>,
 }
 
-/// Only find non-configuration or unrelated environment variables.
+/// Only find non-configuration yet related environment variables.
 fn include_env_vars(var: &(String, String)) -> bool {
   let exclusions: [&str; 2] = [DELIMITER_KEY, SEPARATOR_KEY];
   let key = var.0.as_str();
